@@ -21,6 +21,7 @@ import CmsDashboard from './cms/CmsDashboard';
 import WelcomeToast from './components/WelcomeToast';
 import WatermarkBackground from './components/WatermarkBackground';
 import CommentTicker from './components/CommentTicker';
+import GuidanceNote from './components/GuidanceNote';
 import PrintPortfolio from './components/PrintPortfolio';
 import PelicanLoader from './components/PelicanLoader';
 
@@ -361,6 +362,19 @@ export default function App() {
             di HP (gak ada ruang kosong buat itu) & pas Admin Mode kebuka. */}
         {!isMobileLayout && !isAdminMode && (
           <CommentTicker quotes={portfolioData.quotes} />
+        )}
+
+        {/* Kotak "Guidance / Hint" — beda dari CommentTicker di atas, ini SENGAJA diem
+            di tempat (gak ada animasi jalan/loop), nempel di tepi KIRI (bukan kanan),
+            nunjukin panduan singkat sesuai tab publik yang lagi dibuka (activeTab).
+            Sama kayak CommentTicker: disembunyiin di HP & pas Admin Mode kebuka, dan
+            dipasang di luar div kertas yang punya transform: scale biar posisinya gak
+            ikut ke-scale pas zoom. */}
+        {!isMobileLayout && !isAdminMode && (
+          <GuidanceNote
+            heading={portfolioData.patrol?.heading}
+            text={portfolioData.patrol?.[activeTab]}
+          />
         )}
 
         {/* Notifikasi welcome — beda dari CommentTicker di atas, ini SENGAJA tetep muncul

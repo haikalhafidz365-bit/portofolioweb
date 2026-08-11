@@ -174,18 +174,33 @@ export const initialPortfolioData = {
     ]
   },
 
-  // 7. ODDS — serpihan/cuplikan tulisan pendek yang dipakai sebagai aksen latar
+  // 7. PATROL — teks guidance/hint statis buat pengunjung yang lagi bingung. Muncul
+  // sebagai kotak putih diam (GAK ikut animasi/scroll kayak CommentTicker) yang nempel
+  // di pojok kiri-bawah LUAR kertas A4, cuma di desktop (di HP gak ada ruang kosong buat
+  // itu, sama kayak CommentTicker). Satu teks per tab publik — ganti isinya lewat CMS
+  // tab "Patrol". Kalau teksnya dikosongin, kotaknya otomatis gak nongol di tab itu.
+  patrol: {
+    heading: 'Guidance / Hint',
+    Home: 'Halo! Ini halaman awal. Geser ke tab lain di Ribbon atas buat lihat About, Career, Book, Projects, sampai Contact.',
+    About: 'Di sini cerita singkat soal keseharian & keseharian saya — Live, Life, sama Laugh.',
+    Career: 'Klik salah satu kartu (School / College / Professional) buat lihat detail riwayatnya.',
+    Book: 'Klik salah satu buku di rak buat baca detail lengkapnya.',
+    Projects: 'Artikel unggulan ada di kiri, galeri poster & foto ada di bawahnya — klik buat lihat lebih detail.',
+    Contact: 'Mau kolaborasi atau sekadar nyapa? Klik tombol di bawah atau kirim email langsung.'
+  },
+
+  // 9. ODDS — serpihan/cuplikan tulisan pendek yang dipakai sebagai aksen latar
   // (bertebaran halus di belakang konten, di SEMUA tab sekaligus). Diedit sekali di
   // CMS, otomatis kepake di mana-mana. Array of strings — satu string = satu serpihan.
   odds: [],
 
-  // 8. QUOTES — kutipan-kutipan pendek yang tampil di balon komentar berjalan (nempel
+  // 10. QUOTES — kutipan-kutipan pendek yang tampil di balon komentar berjalan (nempel
   // di tepi kanan layar, jalan ke atas terus-menerus/loop). SENGAJA dipisah dari `odds`
   // di atas: odds itu buat tekstur latar yang acak & banyak, sedangkan quotes ini buat
   // kalimat yang beneran "berdiri sendiri" sebagai kutipan yang kebaca jelas. Diedit
   // sekali di CMS (tab terpisah dari Odds), otomatis kepake di semua tab. Array of
   // strings — satu string = satu kutipan.
-  // 9. GENERAL — pengaturan situs secara keseluruhan (bukan punya satu halaman tertentu).
+  // 11. GENERAL — pengaturan situs secara keseluruhan (bukan punya satu halaman tertentu).
   // Baru ada 1 fitur di sini: notifikasi welcome yang nyambut pengunjung pas pertama buka web.
   general: {
     welcomeNotification: {

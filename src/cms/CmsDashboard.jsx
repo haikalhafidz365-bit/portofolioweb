@@ -1,7 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase, IMAGES_BUCKET } from '../lib/supabaseClient';
 
-const TABS = ['home', 'about', 'career', 'book', 'projects', 'contact', 'odds', 'quotes', 'general'];
+const TABS = ['home', 'about', 'career', 'book', 'projects', 'contact', 'patrol', 'odds', 'quotes', 'general'];
+
+// Daftar tab publik yang butuh teks guidance sendiri-sendiri di section Patrol — SENGAJA
+// pakai nama persis kayak `activeTab` di App.jsx (huruf besar di awal: 'Home', 'About',
+// dst), biar App.jsx bisa langsung ambil `portfolioData.patrol[activeTab]` tanpa perlu
+// mapping tambahan.
+const PATROL_TABS = ['Home', 'About', 'Career', 'Book', 'Projects', 'Contact'];
 
 // Metadata buat kartu menu utama CMS — cukup diedit di sini kalau mau ganti label/ikon/deskripsi
 const TAB_META = {
@@ -11,6 +17,7 @@ const TAB_META = {
   book: { label: 'Book', desc: 'Buku, tulisan & karya open-source' },
   projects: { label: 'Projects', desc: 'Artikel & galeri visual' },
   contact: { label: 'Contact', desc: 'Info kontak, sosmed & tombol aksi' },
+  patrol: { label: 'Patrol', desc: 'Teks guidance/hint statis buat pengunjung, satu per tab' },
   odds: { label: 'Odds', desc: 'Serpihan tulisan buat aksen latar di semua tab' },
   quotes: { label: 'Quotes', desc: 'Kutipan buat balon komentar berjalan di tepi kanan' },
   general: { label: 'General', desc: 'Pengaturan situs — notifikasi welcome, dll' },
@@ -33,6 +40,18 @@ const normalizeGeneral = (raw) => ({
     ...(raw?.welcomeNotification || {}),
   },
 });
+// Jaring pengaman sama kayak normalizeGeneral: kalau data lama di Supabase belum
+// punya field `patrol` sama sekali, atau cuma punya sebagian tab-nya, isi kosong
+// dulu buat tab yang belum ada (biar textarea-nya gak "undefined" & gak crash).
+const DEFAULT_PATROL_HEADING = 'Guidance / Hint';
+function normalizePatrol(raw) {
+  const out = { heading: raw?.heading || DEFAULT_PATROL_HEADING };
+  PATROL_TABS.forEach((tab) => {
+    out[tab] = typeof raw?.[tab] === 'string' ? raw[tab] : '';
+  });
+  return out;
+}
+
 const CAREER_CATEGORIES = ['professional', 'school', 'college'];
 
 const emptyCareerItem = () => ({
@@ -247,6 +266,7 @@ export default function CmsDashboard({ data, onSave, onClose }) {
       career: normalizedCareer,
       books: normalizeBooksData(cloned.books),
       projects: normalizeProjectsData(cloned.projects),
+      patrol: normalizePatrol(cloned.patrol),
       odds: Array.isArray(cloned.odds) ? cloned.odds : [],
       quotes: Array.isArray(cloned.quotes) ? cloned.quotes : [],
       general: normalizeGeneral(cloned.general),
@@ -302,6 +322,7 @@ export default function CmsDashboard({ data, onSave, onClose }) {
         career: normalizedCareer,
         books: normalizeBooksData(cloned.books),
         projects: normalizeProjectsData(cloned.projects),
+        patrol: normalizePatrol(cloned.patrol),
         odds: Array.isArray(cloned.odds) ? cloned.odds : [],
         quotes: Array.isArray(cloned.quotes) ? cloned.quotes : [],
         general: normalizeGeneral(cloned.general),
@@ -313,6 +334,12 @@ export default function CmsDashboard({ data, onSave, onClose }) {
   /* ============ HOME ============ */
   const setHome = (field, value) =>
     setFormData((p) => ({ ...p, home: { ...p.home, [field]: value } }));
+
+  /* ============ PATROL ============ */
+  // Satu setter buat 2 hal: teks guidance per tab (kirim tabKey = 'Home'/'About'/dst)
+  // dan judul kotaknya sendiri (kirim tabKey = 'heading').
+  const setPatrol = (tabKey, value) =>
+    setFormData((p) => ({ ...p, patrol: { ...p.patrol, [tabKey]: value } }));
 
   /* ============ ODDS ============ */
   // Textarea satu baris = satu serpihan teks. Baris kosong disaring pas dipakai di
@@ -1196,6 +1223,41 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ================= PATROL ================= */}
+        {activeTab === 'patrol' && (
+          <div className="space-y-3">
+            <h2 className="text-sm font-bold border-b pb-2 border-gray-100 dark:border-gray-800 text-blue-600 dark:text-blue-400">Tab Patrol</h2>
+            <p className="text-xs text-gray-500 italic">
+              Kotak guidance/hint putih yang diem di tempat (gak jalan/loop) di pojok
+              kiri-bawah luar kertas — cuma di desktop. Isinya beda-beda tergantung tab
+              publik yang lagi dibuka pengunjung. Kosongin salah satu kotak di bawah kalau
+              gak mau guidance-nya nongol di tab itu.
+            </p>
+
+            <Field label="Judul Kotak">
+              <input
+                type="text"
+                value={formData.patrol.heading}
+                onChange={(e) => setPatrol('heading', e.target.value)}
+                placeholder="Guidance / Hint"
+                className={inputCls}
+              />
+            </Field>
+
+            {PATROL_TABS.map((tab) => (
+              <Field key={tab} label={`Guidance buat Tab ${tab}`}>
+                <textarea
+                  rows={3}
+                  value={formData.patrol[tab]}
+                  onChange={(e) => setPatrol(tab, e.target.value)}
+                  placeholder={`Contoh: petunjuk singkat buat pengunjung yang lagi di tab ${tab}...`}
+                  className={`${inputCls} resize-y`}
+                />
+              </Field>
+            ))}
           </div>
         )}
 
