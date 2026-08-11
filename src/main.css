@@ -1,0 +1,40 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+body {
+  @apply bg-[#e6e6e6] dark:bg-[#181818] text-gray-800 dark:text-gray-100 font-sans antialiased m-0 p-0 transition-colors duration-200;
+  overflow-y: auto;
+}
+
+.word-page {
+  width: 100%;
+  max-width: 210mm;
+  min-height: 297mm;
+  padding: 20mm;
+  margin: 20px auto;
+  background: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid #d3d3d3;
+  box-sizing: border-box;
+}
+
+.dark .word-page {
+  background: #202020;
+  border-color: #333333;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #444444;
+}
