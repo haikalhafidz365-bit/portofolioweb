@@ -22,6 +22,7 @@ import WelcomeToast from './components/WelcomeToast';
 import WatermarkBackground from './components/WatermarkBackground';
 import CommentTicker from './components/CommentTicker';
 import PrintPortfolio from './components/PrintPortfolio';
+import PelicanLoader from './components/PelicanLoader';
 
 // Menghitung total kata secara rekursif dari objek/array data apapun (dipakai untuk word count di StatusBar)
 function countWords(value) {
@@ -272,13 +273,7 @@ export default function App() {
   // Sementara data masih di-fetch dari Supabase, tampilin loading simpel
   // biar gak kelihatan "flash" dari data default ke data asli.
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#e6e6e6] dark:bg-[#181818] flex items-center justify-center">
-        <p className="text-sm font-mono text-gray-500 dark:text-gray-400 animate-pulse">
-          Memuat data portofolio...
-        </p>
-      </div>
-    );
+    return <PelicanLoader />;
   }
 
   // Dipanggil dari tombol "Download PDF" di tab Home. Trigger dialog print bawaan
