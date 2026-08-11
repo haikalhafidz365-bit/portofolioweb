@@ -64,6 +64,8 @@ export default function Career({ data }) {
                       <img
                         src={bgImage}
                         alt={meta.label}
+                        loading="lazy"
+                        decoding="async"
                         className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
                       {/* Overlay gelap cuma dipakai pas ada foto, biar teks putih di atasnya kebaca */}
@@ -181,6 +183,8 @@ export default function Career({ data }) {
                 <img
                   src={selectedPopup.photo}
                   alt={selectedPopup.name}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover"
                 />
               </div>

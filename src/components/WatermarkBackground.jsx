@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 
 // Bikin angka "acak" yang KONSISTEN dari sebuah string — biar posisi tiap serpihan
-// selalu sama tiap render (nggak lompat-lompat tiap kali state lain berubah), tapi
-// tetep keliatan berantakan/nggak beraturan dari satu serpihan ke serpihan lain.
+// selalu sama tiap render (nggak lompat-lompat tiap kali state lain berubah).
 function seededRandom(str, salt) {
   let hash = 0;
   const full = str + salt;
@@ -18,15 +17,25 @@ export default function WatermarkBackground({ odds }) {
     const cleaned = (odds || []).map((s) => s.trim()).filter(Boolean);
     if (cleaned.length === 0) return [];
 
-    return cleaned.map((text, i) => {
-      const top = 4 + seededRandom(text, 'top') * 90; // 4% - 94% dari tinggi halaman
-      const left = 2 + seededRandom(text, 'left') * 82; // 2% - 84% dari lebar halaman
-      const rotate = (seededRandom(text, 'rot') - 0.5) * 32; // -16deg .. 16deg
-      const size = 11 + seededRandom(text, 'size') * 10; // 11px - 21px
-      const opacity = 0.05 + seededRandom(text, 'op') * 0.06; // 0.05 - 0.11
-      const maxWidth = 120 + seededRandom(text, 'w') * 100; // biar teks panjang ke-wrap, bukan numpuk 1 baris
+    // Disusun grid 2 kolom: kolom kiri rata-kiri nempel tepi kiri, kolom kanan rata-kanan
+    // nempel tepi kanan. Sengaja TIDAK masuk ke tengah — itu wilayah konten asli, biar
+    // gak numpuk/ganggu bacaan. Baris disebar merata dari atas ke bawah halaman.
+    const totalRows = Math.ceil(cleaned.length / 2);
 
-      return { text, top, left, rotate, size, opacity, maxWidth, key: `${text}-${i}` };
+    return cleaned.map((text, i) => {
+      const column = i % 2; // 0 = kiri, 1 = kanan
+      const row = Math.floor(i / 2);
+
+      // Sebaran vertikal merata + sedikit jitter (biar gak kaku robotik), TANPA jitter
+      // horizontal — itu yang bikin kolomnya beneran lurus rata kiri/kanan.
+      const rowRatio = totalRows > 1 ? row / (totalRows - 1) : 0.5;
+      const verticalJitter = (seededRandom(text, 'jit') - 0.5) * 4; // ±2%
+      const top = Math.min(92, Math.max(4, 6 + rowRatio * 84 + verticalJitter));
+
+      const size = 12 + seededRandom(text, 'size') * 6; // 12px - 18px, lebih seragam
+      const opacity = 0.1 + seededRandom(text, 'op') * 0.06; // 0.10 - 0.16, dinaikin dikit dari sebelumnya
+
+      return { text, top, column, size, opacity, key: `${text}-${i}` };
     });
   }, [odds]);
 
@@ -40,14 +49,15 @@ export default function WatermarkBackground({ odds }) {
       {items.map((it) => (
         <span
           key={it.key}
-          className="absolute font-serif italic text-gray-900 dark:text-white leading-snug"
+          className={`absolute font-serif italic text-gray-900 dark:text-white leading-snug ${
+            it.column === 0 ? 'text-left' : 'text-right'
+          }`}
           style={{
             top: `${it.top}%`,
-            left: `${it.left}%`,
-            maxWidth: `${it.maxWidth}px`,
+            ...(it.column === 0 ? { left: '3%' } : { right: '3%' }),
+            maxWidth: '38%',
             fontSize: `${it.size}px`,
             opacity: it.opacity,
-            transform: `rotate(${it.rotate}deg)`,
           }}
         >
           {it.text}

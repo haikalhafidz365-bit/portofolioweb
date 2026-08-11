@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase, IMAGES_BUCKET } from '../lib/supabaseClient';
 
-const TABS = ['home', 'about', 'career', 'book', 'projects', 'contact', 'odds', 'quotes'];
+const TABS = ['home', 'about', 'career', 'book', 'projects', 'contact', 'odds', 'quotes', 'general'];
 
 // Metadata buat kartu menu utama CMS — cukup diedit di sini kalau mau ganti label/ikon/deskripsi
 const TAB_META = {
@@ -13,7 +13,26 @@ const TAB_META = {
   contact: { label: 'Contact', desc: 'Info kontak, sosmed & tombol aksi' },
   odds: { label: 'Odds', desc: 'Serpihan tulisan buat aksen latar di semua tab' },
   quotes: { label: 'Quotes', desc: 'Kutipan buat balon komentar berjalan di tepi kanan' },
+  general: { label: 'General', desc: 'Pengaturan situs — notifikasi welcome, dll' },
 };
+
+const DEFAULT_GENERAL = {
+  welcomeNotification: {
+    enabled: true,
+    title: 'Selamat datang! 👋',
+    message: 'Terima kasih udah mampir ke portofolio saya. Semoga betah!',
+    delaySeconds: 2,
+  },
+};
+
+// Jaring pengaman kalau data lama di Supabase belum punya field `general` sama sekali,
+// atau field welcomeNotification-nya cuma sebagian — gabungin sama default biar gak crash.
+const normalizeGeneral = (raw) => ({
+  welcomeNotification: {
+    ...DEFAULT_GENERAL.welcomeNotification,
+    ...(raw?.welcomeNotification || {}),
+  },
+});
 const CAREER_CATEGORIES = ['professional', 'school', 'college'];
 
 const emptyCareerItem = () => ({
@@ -230,6 +249,7 @@ export default function CmsDashboard({ data, onSave, onClose }) {
       projects: normalizeProjectsData(cloned.projects),
       odds: Array.isArray(cloned.odds) ? cloned.odds : [],
       quotes: Array.isArray(cloned.quotes) ? cloned.quotes : [],
+      general: normalizeGeneral(cloned.general),
     };
   });
   // null = layar menu utama (pilih salah satu dari 6 tab dulu sebelum masuk ke isinya)
@@ -246,6 +266,8 @@ export default function CmsDashboard({ data, onSave, onClose }) {
   const [uploadingBookOverview, setUploadingBookOverview] = useState(null);
   // Index artikel yang lagi proses upload gambarnya
   const [uploadingArticleImage, setUploadingArticleImage] = useState(null);
+  // Index tombol aksi (di tab Contact) yang lagi proses upload file-nya (mis. PDF resume)
+  const [uploadingActionButton, setUploadingActionButton] = useState(null);
   // Kunci berupa "poster-idx" / "photo-idx" buat nandain item gallery mana yang lagi upload
   const [uploadingGalleryImage, setUploadingGalleryImage] = useState(null);
 
@@ -282,6 +304,7 @@ export default function CmsDashboard({ data, onSave, onClose }) {
         projects: normalizeProjectsData(cloned.projects),
         odds: Array.isArray(cloned.odds) ? cloned.odds : [],
         quotes: Array.isArray(cloned.quotes) ? cloned.quotes : [],
+        general: normalizeGeneral(cloned.general),
       });
       setActiveTab(null);
     }
@@ -302,6 +325,18 @@ export default function CmsDashboard({ data, onSave, onClose }) {
   // biar nambah kutipan buat balon komentar gak ikut nambahin serpihan watermark, begitu juga sebaliknya.
   const setQuotes = (rawText) =>
     setFormData((p) => ({ ...p, quotes: rawText.split('\n') }));
+
+  /* ============ GENERAL ============ */
+  // Semua pengaturan di sini sifatnya site-wide (bukan punya satu halaman doang),
+  // makanya field-nya dikelompokkan lewat 1 setter yang nerima nested key.
+  const setWelcomeNotification = (field, value) =>
+    setFormData((p) => ({
+      ...p,
+      general: {
+        ...p.general,
+        welcomeNotification: { ...p.general.welcomeNotification, [field]: value },
+      },
+    }));
 
   /* ============ ABOUT ============ */
   // Live, Life, Laugh sekarang masing-masing cuma satu kotak teks paragraf bebas.
@@ -1116,16 +1151,47 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                 <label className="block text-xs font-medium">Tombol Aksi (mis. Hire Me, Download Resume)</label>
                 <AddBtn onClick={addActionButton} label="Tambah Tombol" />
               </div>
+              <p className="text-[10px] text-gray-400 mb-2">
+                Buat tombol "Download Resume": isi Label-nya, terus di kolom Link tinggal upload file
+                PDF-nya langsung dari perangkat lo — link publiknya otomatis keisi sendiri.
+              </p>
               <div className="space-y-2">
                 {formData.contact.actionButtons.map((btn, idx) => (
-                  <div key={idx} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
-                    <input type="text" value={btn.label} onChange={(e) => setActionButtonField(idx, 'label', e.target.value)} placeholder="Label Tombol" className={inputClsSm} />
-                    <input type="text" value={btn.url} onChange={(e) => setActionButtonField(idx, 'url', e.target.value)} placeholder="Link" className={inputClsSm} />
-                    <label className="flex items-center gap-1 text-[10px] text-gray-500 whitespace-nowrap">
-                      <input type="checkbox" checked={!!btn.primary} onChange={(e) => setActionButtonField(idx, 'primary', e.target.checked)} />
-                      Utama
-                    </label>
-                    <RemoveBtn onClick={() => removeActionButton(idx)} />
+                  <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded p-2 space-y-1.5">
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
+                      <input type="text" value={btn.label} onChange={(e) => setActionButtonField(idx, 'label', e.target.value)} placeholder="Label Tombol" className={inputClsSm} />
+                      <input type="text" value={btn.url} onChange={(e) => setActionButtonField(idx, 'url', e.target.value)} placeholder="Link (atau upload file di bawah)" className={inputClsSm} />
+                      <label className="flex items-center gap-1 text-[10px] text-gray-500 whitespace-nowrap">
+                        <input type="checkbox" checked={!!btn.primary} onChange={(e) => setActionButtonField(idx, 'primary', e.target.checked)} />
+                        Utama
+                      </label>
+                      <RemoveBtn onClick={() => removeActionButton(idx)} />
+                    </div>
+                    <div className="flex items-center gap-2 pl-0.5">
+                      <input
+                        type="file"
+                        accept=".pdf,application/pdf,image/*"
+                        disabled={uploadingActionButton === idx}
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          setUploadingActionButton(idx);
+                          const url = await uploadImageToStorage(file);
+                          setUploadingActionButton(null);
+                          if (url) setActionButtonField(idx, 'url', url);
+                          e.target.value = '';
+                        }}
+                        className="flex-1 text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/40 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/40 disabled:opacity-60"
+                      />
+                      {uploadingActionButton === idx && (
+                        <span className="text-[10px] text-blue-500 animate-pulse shrink-0">Mengupload...</span>
+                      )}
+                      {btn.url && !uploadingActionButton && (
+                        <a href={btn.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-400 hover:text-blue-600 underline shrink-0">
+                          Lihat file saat ini
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1173,6 +1239,75 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                 className={`${inputCls} resize-y font-mono`}
               />
             </Field>
+          </div>
+        )}
+
+        {/* ================= GENERAL ================= */}
+        {activeTab === 'general' && (
+          <div className="space-y-3">
+            <h2 className="text-sm font-bold border-b pb-2 border-gray-100 dark:border-gray-800 text-blue-600 dark:text-blue-400">Tab General</h2>
+            <p className="text-xs text-gray-500 italic">
+              Pengaturan situs secara keseluruhan — bukan punya satu halaman tertentu, jadi
+              kepisah dari 6 tab konten di atas.
+            </p>
+
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-bold text-gray-800 dark:text-gray-100">Notifikasi Welcome</h3>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    Kartu sambutan yang muncul otomatis pas orang pertama buka web. Desktop:
+                    pojok kanan-bawah. HP: melayang di bawah, lebar penuh. Muncul sekali per
+                    kunjungan (per tab browser), ada tombol tutup.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setWelcomeNotification('enabled', !formData.general.welcomeNotification.enabled)}
+                  className={`shrink-0 w-11 h-6 rounded-full transition-colors relative ${
+                    formData.general.welcomeNotification.enabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                  title={formData.general.welcomeNotification.enabled ? 'Aktif — klik buat matiin' : 'Mati — klik buat nyalain'}
+                >
+                  <span
+                    className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                      formData.general.welcomeNotification.enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <Field label="Judul">
+                <input
+                  type="text"
+                  value={formData.general.welcomeNotification.title}
+                  onChange={(e) => setWelcomeNotification('title', e.target.value)}
+                  placeholder="Selamat datang! 👋"
+                  className={inputCls}
+                />
+              </Field>
+
+              <Field label="Pesan">
+                <textarea
+                  rows={3}
+                  value={formData.general.welcomeNotification.message}
+                  onChange={(e) => setWelcomeNotification('message', e.target.value)}
+                  placeholder="Terima kasih udah mampir ke portofolio saya."
+                  className={`${inputCls} resize-y`}
+                />
+              </Field>
+
+              <Field label="Muncul setelah (detik)">
+                <input
+                  type="number"
+                  min={0}
+                  max={30}
+                  value={formData.general.welcomeNotification.delaySeconds}
+                  onChange={(e) => setWelcomeNotification('delaySeconds', Math.max(0, Number(e.target.value) || 0))}
+                  className={`${inputCls} max-w-[120px]`}
+                />
+              </Field>
+            </div>
           </div>
         )}
       </>

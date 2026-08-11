@@ -189,6 +189,8 @@ export default function Projects({ data, initialArticleId }) {
                         <img
                           src={featured.image}
                           alt={featured.title}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
                         />
                       </div>
@@ -248,6 +250,8 @@ export default function Projects({ data, initialArticleId }) {
                             <img
                               src={art.image}
                               alt={art.title}
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-cover"
                             />
                           </div>
@@ -317,6 +321,8 @@ export default function Projects({ data, initialArticleId }) {
                     <img
                       src={selectedArticle.image}
                       alt={selectedArticle.title}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -454,6 +460,8 @@ export default function Projects({ data, initialArticleId }) {
                   <img
                     src={selectedGalleryItem.imageUrl}
                     alt={selectedGalleryItem.title}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-auto max-h-[78vh] object-contain"
                   />
                 </div>
@@ -520,7 +528,7 @@ export default function Projects({ data, initialArticleId }) {
             <div className="relative">
               {shareArticle.image ? (
                 <div className="w-full aspect-[16/9] bg-gray-100 dark:bg-black/40">
-                  <img src={shareArticle.image} alt={shareArticle.title} className="w-full h-full object-cover" />
+                  <img src={shareArticle.image} alt={shareArticle.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="w-full aspect-[16/9] bg-gradient-to-br from-[#2B579A] to-[#6FA8DC] flex items-center justify-center">

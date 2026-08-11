@@ -120,7 +120,7 @@ export default function Book({ data }) {
               : 'border-gray-300 dark:border-gray-700'
           }`}
         >
-          <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover" draggable={false} />
+          <img src={item.coverImage} alt={item.title} loading="lazy" decoding="async" className="w-full h-full object-cover" draggable={false} />
         </div>
         {/* Spine — sisi kanan, gelap */}
         <div className="absolute top-1 bottom-1 -right-[5px] w-[5px] rounded-r-sm bg-black/30 dark:bg-black/50 pointer-events-none" />
@@ -223,7 +223,7 @@ export default function Book({ data }) {
             {/* SISI KIRI — foto isi buku (overview) */}
             <div className="relative h-56 sm:h-auto sm:min-h-[420px] bg-gray-100 dark:bg-black/30 overflow-hidden">
               {activeBook.overviewImage ? (
-                <img src={activeBook.overviewImage} alt={`Isi buku ${activeBook.title}`} className="w-full h-full object-cover" />
+                <img src={activeBook.overviewImage} alt={`Isi buku ${activeBook.title}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-center px-6 font-mono text-xs text-gray-400 dark:text-gray-600">
                   belum ada foto overview buat buku ini

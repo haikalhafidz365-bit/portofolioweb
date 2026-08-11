@@ -38,3 +38,14 @@ body {
 .dark ::-webkit-scrollbar-thumb {
   background: #444444;
 }
+
+/* Ukuran kertas buat fitur Download PDF (window.print()) — target A4 standar */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  body {
+    background: white;
+  }
+}

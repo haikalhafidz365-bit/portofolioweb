@@ -185,5 +185,14 @@ export const initialPortfolioData = {
   // kalimat yang beneran "berdiri sendiri" sebagai kutipan yang kebaca jelas. Diedit
   // sekali di CMS (tab terpisah dari Odds), otomatis kepake di semua tab. Array of
   // strings — satu string = satu kutipan.
-  quotes: []
+  // 9. GENERAL — pengaturan situs secara keseluruhan (bukan punya satu halaman tertentu).
+  // Baru ada 1 fitur di sini: notifikasi welcome yang nyambut pengunjung pas pertama buka web.
+  general: {
+    welcomeNotification: {
+      enabled: true,
+      title: 'Selamat datang! 👋',
+      message: 'Terima kasih udah mampir ke portofolio saya. Semoga betah!',
+      delaySeconds: 2,
+    }
+  }
 };

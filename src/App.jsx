@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { initialPortfolioData } from './cms/CmsData';
 import { supabase } from './lib/supabaseClient';
+import { initAnalytics, trackPageView } from './lib/analytics';
 
 // Import Komponen Halaman Publik
 import Home from './pages/Home';
@@ -17,8 +18,10 @@ import Ribbon from './components/Ribbon';
 import Ruler from './components/Ruler';
 import StatusBar from './components/StatusBar';
 import CmsDashboard from './cms/CmsDashboard';
+import WelcomeToast from './components/WelcomeToast';
 import WatermarkBackground from './components/WatermarkBackground';
 import CommentTicker from './components/CommentTicker';
+import PrintPortfolio from './components/PrintPortfolio';
 
 // Menghitung total kata secara rekursif dari objek/array data apapun (dipakai untuk word count di StatusBar)
 function countWords(value) {
@@ -136,11 +139,28 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(
     VALID_TABS.includes(urlTab) ? urlTab : 'Home'
   );
+
+  // Nyalain Google Analytics (GA4) sekali pas app pertama kali kebuka — otomatis gak
+  // ngapa-ngapain kalau .env belum diisi VITE_GA_MEASUREMENT_ID (lihat src/lib/analytics.js).
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
   const [darkMode, setDarkMode] = useState(false);
   const [isAdminMode, setIsAdminModeRaw] = useState(false);
   const [isAdminAuthed, setIsAdminAuthed] = useState(
     () => sessionStorage.getItem('cms_admin_authed') === 'true'
   );
+
+  // Kirim "page view" tiap kali visitor pindah tab (Home/About/Career/dst) — biar
+  // tiap tab kehitung sebagai halaman sendiri di laporan Analytics, bukan cuma
+  // sekali doang pas web pertama dibuka. Skip pas lagi di Admin Mode.
+  useEffect(() => {
+    if (!isAdminMode) {
+      trackPageView(activeTab);
+    }
+  }, [activeTab, isAdminMode]);
+
 
   // Deteksi layar sempit (HP) SECARA OTOMATIS lewat matchMedia — bukan toggle manual.
   // Ini beneran ngikutin lebar browser asli, jadi kalau dibuka dari HP sungguhan
@@ -248,9 +268,17 @@ export default function App() {
     );
   }
 
+  // Dipanggil dari tombol "Download PDF" di tab Home. Trigger dialog print bawaan
+  // browser — visitor tinggal pilih tujuan "Save as PDF". Yang beneran di-print
+  // adalah <PrintPortfolio> (dirender tersembunyi di bawah, isinya SEMUA tab
+  // dibentang penuh), bukan tampilan Word yang lagi aktif ini.
+  const handleDownloadPdf = () => {
+    window.print();
+  };
+
   const documentBody = (
     <div className={`relative z-10 w-full h-full ${isBold ? 'font-bold' : ''} ${isItalic ? 'italic' : ''} ${isUnderline ? 'underline' : ''}`}>
-      {activeTab === 'Home' && <Home data={portfolioData.home} />}
+      {activeTab === 'Home' && <Home data={portfolioData.home} onDownloadPdf={handleDownloadPdf} />}
       {activeTab === 'About' && <About data={portfolioData.about} />}
       {activeTab === 'Career' && <Career data={portfolioData.career} />}
       {activeTab === 'Book' && <Book data={portfolioData.books} />}
@@ -261,7 +289,7 @@ export default function App() {
 
   return (
     <div className={darkMode ? 'dark' : ''}>
-      <div className="min-h-screen bg-[#e6e6e6] dark:bg-[#181818] flex flex-col justify-between selection:bg-blue-500 selection:text-white">
+      <div className="print:hidden min-h-screen bg-[#e6e6e6] dark:bg-[#181818] flex flex-col justify-between selection:bg-blue-500 selection:text-white">
 
         {/* Pesan error kalau gagal konek/simpen ke Supabase */}
         {(loadError || saveError) && (
@@ -327,6 +355,15 @@ export default function App() {
           <CommentTicker quotes={portfolioData.quotes} />
         )}
 
+        {/* Notifikasi welcome — beda dari CommentTicker di atas, ini SENGAJA tetep muncul
+            di HP juga (posisinya ngikutin isMobileLayout di dalam komponennya sendiri). */}
+        {!isAdminMode && (
+          <WelcomeToast
+            settings={portfolioData.general?.welcomeNotification}
+            isMobileLayout={isMobileLayout}
+          />
+        )}
+
         {/* 2. Konten Utama: Admin CMS atau Lembar Dokumen */}
         {isAdminMode ? (
           <div className="p-4 sm:p-6 max-w-4xl mx-auto w-full bg-white dark:bg-[#202020] my-4 sm:my-6 rounded shadow-lg">
@@ -364,15 +401,26 @@ export default function App() {
               <Ruler zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />
             )}
 
-            {/* Lembar Kertas Utama */}
-            <div className="w-full flex justify-center py-2 sm:py-4 px-0 sm:px-2 overflow-x-auto overflow-y-visible">
+            {/* Lembar Kertas Utama — di HP dibikin nempel penuh (gak ada padding/gap abu-abu
+                di sekitarnya) dan flex-1 biar ngisi sisa tinggi layar, jadi berasa kayak app
+                native, bukan "kertas di atas meja abu-abu". Desktop TIDAK berubah sama sekali. */}
+            <div className={
+              isMobileLayout
+                ? 'w-full flex-1 flex justify-center overflow-x-auto overflow-y-visible'
+                : 'w-full flex justify-center py-2 sm:py-4 px-0 sm:px-2 overflow-x-auto overflow-y-visible'
+            }>
               {isMobileLayout ? (
                 // ===== DI HP: full-width & fluid, TANPA efek "kertas Word" & TANPA di-scale.
                 // Ini yang paling nentuin — versi lama maksa lebar/skala dokumen dekstop
                 // ke layar kecil, itu penyebab utama tampilannya berantakan pas dibuka di HP.
                 <div
                   className="relative w-full px-4 py-4 text-gray-900 dark:text-gray-100 bg-white dark:bg-[#202020]"
-                  style={{ fontFamily, fontSize: `${fontSize}pt` }}
+                  style={{
+                    fontFamily,
+                    fontSize: `${fontSize}pt`,
+                    transform: `scale(${fontSize / FONT_SIZE_BASELINE_PT})`,
+                    transformOrigin: 'top center'
+                  }}
                 >
                   <WatermarkBackground odds={portfolioData.odds} />
                   {documentBody}
@@ -412,6 +460,10 @@ export default function App() {
         />
 
       </div>
+
+      {/* Versi khusus buat Download PDF — normalnya tersembunyi total (lihat class
+          "hidden print:block" di dalam komponennya), cuma nongol pas dialog print aktif. */}
+      <PrintPortfolio data={portfolioData} />
     </div>
   );
 }

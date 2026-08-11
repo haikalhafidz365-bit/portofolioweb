@@ -1,10 +1,38 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>portofolio-web</title>
+
+    <title>Portofolio — Frontend Developer</title>
+    <meta name="description" content="Portofolio pribadi: proyek, tulisan, riwayat karier, dan cara menghubungi saya untuk kolaborasi atau pekerjaan." />
+
+    <!-- Open Graph (preview pas link di-share ke WhatsApp/LinkedIn/dll) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Portofolio — Frontend Developer" />
+    <meta property="og:description" content="Portofolio pribadi: proyek, tulisan, riwayat karier, dan cara menghubungi saya untuk kolaborasi atau pekerjaan." />
+    <!-- TODO: ganti og:url ke domain asli begitu udah di-deploy -->
+    <meta property="og:url" content="https://ganti-dengan-domain-lo.com" />
+    <!-- TODO: og:image butuh gambar rasio 1200x630px biar preview-nya bagus. Belum ada
+         asetnya sekarang — begitu ada foto/screenshot yang cocok, tambahin baris:
+         <meta property="og:image" content="https://domain-lo.com/og-image.jpg" /> -->
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Portofolio — Frontend Developer" />
+    <meta name="twitter:description" content="Portofolio pribadi: proyek, tulisan, riwayat karier, dan cara menghubungi saya untuk kolaborasi atau pekerjaan." />
+
+    <!-- Google Analytics (GA4) — Measurement ID diambil dari .env (VITE_GA_MEASUREMENT_ID),
+         BUKAN di-hardcode di sini, biar gampang ganti tanpa edit HTML & gak nge-track pas
+         lo lagi develop lokal kalau .env belum diisi. Logic pengecekannya ada di
+         src/lib/analytics.js — file ini cuma nyiapin slot kosong window.dataLayer/gtag
+         yang bakal diisi/dipanggil dari sana. -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){ window.dataLayer.push(arguments); }
+      window.gtag = gtag;
+    </script>
   </head>
   <body>
     <div id="root"></div>

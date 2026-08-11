@@ -17,8 +17,12 @@ export default function About({ data }) {
   const content = data || {};
 
   return (
-    <div className="w-full flex flex-col items-start justify-center text-left py-16 px-4 sm:px-8 select-text max-w-2xl mx-auto">
-      {SECTIONS.map(({ key, label }, idx) => {
+    <div className="w-full flex flex-col items-center justify-center text-left py-16 px-4 sm:px-8 select-text">
+      {/* Dikotakin dalam 1 card solid — biar teks watermark di belakang (WatermarkBackground)
+          gak numpuk/nembus ke area baca. Card ini punya background sendiri (opaque),
+          jadi apapun yang ada di belakangnya otomatis ketutup rapi. */}
+      <div className="relative z-10 w-full max-w-2xl bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm px-5 sm:px-8">
+        {SECTIONS.map(({ key, label }, idx) => {
         const isOpen = openSection === key;
         const text = content[key];
 
@@ -64,6 +68,7 @@ export default function About({ data }) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
