@@ -140,6 +140,19 @@ export default function App() {
     VALID_TABS.includes(urlTab) ? urlTab : 'Home'
   );
 
+  // Begitu tab/article dari deep-link kepake buat nentuin tampilan awal, langsung bersihin
+  // URL-nya balik ke root (tanpa reload) pake history.replaceState. Ini SENGAJA dilakukan
+  // biar kalau visitor nge-bookmark / save-to-home-screen / browser-nya autocomplete ke
+  // URL itu lagi nanti, yang ke-save udah URL polos — bukan nyangkut permanen di tab
+  // artikel yang pernah di-share. Fitur share artikel sendiri TETEP jalan normal (link-nya
+  // masih valid sekali buka), ini cuma nyegah dia "nempel" jadi default buat kunjungan
+  // berikutnya.
+  useEffect(() => {
+    if (urlTab || initialArticleId) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   // Nyalain Google Analytics (GA4) sekali pas app pertama kali kebuka — otomatis gak
   // ngapa-ngapain kalau .env belum diisi VITE_GA_MEASUREMENT_ID (lihat src/lib/analytics.js).
   useEffect(() => {

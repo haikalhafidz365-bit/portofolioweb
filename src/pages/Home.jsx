@@ -7,7 +7,7 @@ export default function Home({ data, onDownloadPdf }) {
     <div className="w-full flex flex-col items-start justify-center text-left py-16 px-4 sm:px-8 select-text">
       
       {/* Foto Profil (Placeholder Persegi ala Dokumen CV) */}
-      <div className="w-28 h-28 rounded-lg bg-gray-200 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 mb-6 overflow-hidden shadow-sm flex items-center justify-center">
+      <div className="w-28 h-28 rounded-full bg-gray-200 dark:bg-gray-700 mb-6 overflow-hidden flex items-center justify-center">
         {photoUrl ? (
           <img src={photoUrl} alt="Profil" className="w-full h-full object-cover" />
         ) : (
