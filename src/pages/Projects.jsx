@@ -147,6 +147,7 @@ export default function Projects({ data, initialArticleId }) {
         ].map((tab) => (
           <button
             key={tab.key}
+            data-hint-id={`projects-nav-${tab.key}`}
             onClick={() => {
               setActiveCategory(tab.key);
               setSelectedArticle(null);
@@ -177,6 +178,7 @@ export default function Projects({ data, initialArticleId }) {
                 {featured && (
                   <div
                     onClick={() => openArticle(featured)}
+                    {...(featured.hintEnabled !== false ? { 'data-hint-id': `projects-article-${featured.id}` } : {})}
                     className="cursor-pointer group"
                   >
                     {featured.category && (
@@ -235,6 +237,7 @@ export default function Projects({ data, initialArticleId }) {
                       <div
                         key={art.id}
                         onClick={() => openArticle(art)}
+                        {...(art.hintEnabled !== false ? { 'data-hint-id': `projects-article-${art.id}` } : {})}
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -360,6 +363,7 @@ export default function Projects({ data, initialArticleId }) {
               ].map((tab) => (
                 <button
                   key={tab.key}
+                  data-hint-id={`projects-gallery-subtab-${tab.key}`}
                   onClick={() => setGallerySubTab(tab.key)}
                   className={`px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] ${
                     gallerySubTab === tab.key
@@ -413,6 +417,7 @@ export default function Projects({ data, initialArticleId }) {
                 <div
                   key={item.id || idx}
                   onClick={() => setSelectedGalleryIndex(idx)}
+                  {...(item.hintEnabled !== false ? { 'data-hint-id': `projects-gallery-${item.id || idx}` } : {})}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {

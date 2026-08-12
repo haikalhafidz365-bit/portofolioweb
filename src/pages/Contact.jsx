@@ -123,6 +123,7 @@ export default function Contact({ data }) {
         <div className="mt-6 divide-y divide-gray-100 dark:divide-gray-800 border-y border-gray-100 dark:border-gray-800">
           <button
             type="button"
+            data-hint-id="contact-copy-email"
             onClick={handleCopyEmail}
             className="w-full flex items-center justify-between gap-3 py-3 text-left group"
           >

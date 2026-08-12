@@ -90,6 +90,7 @@ export default function Book({ data }) {
       <button
         type="button"
         onClick={() => (isActive ? openDetail() : bringToFront(idx))}
+        {...(isActive ? { 'data-hint-id': 'book-open-active' } : {})}
         aria-label={isActive ? `Buka ${item.title}` : `Pilih ${item.title}`}
         aria-current={isActive ? 'true' : undefined}
         className="absolute rounded-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC]"
@@ -265,6 +266,7 @@ export default function Book({ data }) {
                   href={activeBook.actionUrl}
                   target="_blank"
                   rel="noopener noreferrer"
+                  {...(activeBook.hintEnabled !== false ? { 'data-hint-id': `book-action-${activeBook.id ?? activeIndex}` } : {})}
                   className="inline-flex items-center gap-2 mt-6 w-fit font-mono text-xs bg-[#2B579A] hover:bg-[#1e3f73] dark:bg-[#6FA8DC] dark:hover:bg-[#5a95c9] text-white dark:text-[#1a1a1a] px-4 py-2 rounded-sm transition-colors"
                 >
                   {activeBook.actionText || 'Lihat Selengkapnya'} ↗

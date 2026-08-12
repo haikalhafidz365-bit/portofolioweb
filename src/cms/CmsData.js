@@ -21,6 +21,11 @@ export const initialPortfolioData = {
   //  - bgImage: gambar latar buat kartu menu ala game-menu di halaman Career (kosongkan
   //    biar dia pakai gradasi warna default, isi lewat CMS/upload galeri kalau mau custom)
   //  - items: daftar riwayat di kategori itu (bisa berapa aja, tambah/hapus lewat CMS)
+  //    - hintEnabled (boolean, opsional): kontrol apakah nama perusahaan di item ini
+  //      ikut nge-blink pas mode Hint (tombol pojok kiri atas) diaktifin visitor.
+  //      Defaultnya true kalau field ini gak ada (biar data lama tetep kehint tanpa
+  //      perlu diedit manual). Set jadi false lewat CMS kalau untuk item tertentu
+  //      gak perlu di-hint (mis. udah jelas banget dari desainnya).
   career: {
     // Judul & sub-judul di layar menu utama halaman Career (bisa diedit lewat CMS)
     heading: 'Career & Education',
@@ -30,6 +35,7 @@ export const initialPortfolioData = {
       items: [
         {
           id: 'sch-1',
+          hintEnabled: true,
           role: 'Siswa Jurusan IPA / Teknik Komputer',
           company: 'SMA Negeri 1 Jakarta',
           location: 'Jakarta Pusat',
@@ -49,6 +55,7 @@ export const initialPortfolioData = {
       items: [
         {
           id: 'col-1',
+          hintEnabled: true,
           role: 'Mahasiswa S1 Teknik Informatika',
           company: 'Universitas Indonesia',
           location: 'Depok, Jawa Barat',
@@ -68,6 +75,7 @@ export const initialPortfolioData = {
       items: [
         {
           id: 'prof-1',
+          hintEnabled: true,
           role: 'Frontend Developer & UI Engineer',
           company: 'PT Teknologi Kreatif Nusantara',
           location: 'Jakarta Selatan',
@@ -94,6 +102,7 @@ export const initialPortfolioData = {
     items: [
       {
         id: 'book-1',
+        hintEnabled: true,
         title: 'Panduan Praktis Frontend Modern 2026',
         category: 'E-Book / Tulisan',
         summary: 'Buku saku komprehensif yang membahas trik kilat membangun antarmuka web interaktif dengan React dan Tailwind CSS.',
@@ -106,6 +115,7 @@ export const initialPortfolioData = {
       },
       {
         id: 'book-2',
+        hintEnabled: true,
         title: 'Esai: Seni Menjaga Kewarasan Saat Ngoding',
         category: 'Artikel / Esai',
         summary: 'Kumpulan catatan santai tentang suka duka menghadapi bug tengah malam dan menjaga ritme kerja yang sehat.',
@@ -129,6 +139,7 @@ export const initialPortfolioData = {
     articles: [
       {
         id: 'art-1',
+        hintEnabled: true,
         title: 'Membangun Arsitektur Web Modern di Era Perangkat Pintar',
         date: '12 Mei 2026',
         category: 'Teknologi & Web',
@@ -142,6 +153,7 @@ export const initialPortfolioData = {
       poster: [
         {
           id: 'pos-1',
+          hintEnabled: true,
           title: 'Desain UI System Dashboard Admin',
           category: 'UI/UX Design',
           dimensions: '',
@@ -174,11 +186,14 @@ export const initialPortfolioData = {
     ]
   },
 
-  // 7. PATROL — teks guidance/hint statis buat pengunjung yang lagi bingung. Muncul
-  // sebagai kotak putih diam (GAK ikut animasi/scroll kayak CommentTicker) yang nempel
-  // di pojok kiri-bawah LUAR kertas A4, cuma di desktop (di HP gak ada ruang kosong buat
-  // itu, sama kayak CommentTicker). Satu teks per tab publik — ganti isinya lewat CMS
-  // tab "Patrol". Kalau teksnya dikosongin, kotaknya otomatis gak nongol di tab itu.
+  // 7. PATROL — SUDAH GAK DIPAKAI LAGI oleh halaman publik (App.jsx gak baca field ini
+  // sama sekali sekarang). Dulu ini teks guidance/hint statis satu-per-tab yang muncul
+  // lewat komponen GuidanceNote. Sekarang diganti sistem baru: HintToggle (tombol pojok
+  // kiri atas) + attribute `data-hint-id` langsung di elemen interaktif tiap halaman
+  // (lihat `hintEnabled` di item Career sbg contoh pertama). Data & UI CMS tab "Patrol"
+  // di bawah ini SENGAJA belum dihapus dulu (biar gak hilang data lama & CmsDashboard
+  // gak perlu dirombak buru-buru) — tapi sekarang cuma "nganggur", gak ngefek ke visitor.
+  // Bisa dihapus total dari sini + CmsDashboard.jsx begitu rollout hint ke semua tab kelar.
   patrol: {
     heading: 'Guidance / Hint',
     Home: 'Halo! Ini halaman awal. Geser ke tab lain di Ribbon atas buat lihat About, Career, Book, Projects, sampai Contact.',

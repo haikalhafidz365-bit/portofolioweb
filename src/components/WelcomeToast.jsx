@@ -59,7 +59,23 @@ export default function WelcomeToast({ settings, isMobileLayout }) {
       role="status"
     >
       <div className="bg-white dark:bg-[#242424] border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4 flex gap-3 items-start">
-        <span className="text-xl leading-none shrink-0 mt-0.5">👋</span>
+        <span className="shrink-0 mt-0.5 w-9 h-9 rounded-full bg-[#2b579a] dark:bg-[#3a72c4] text-white flex items-center justify-center">
+          {/* Siluet pelikan lagi terbang & ngepakin sayap — cuma bentuk polosnya, warna putih ngikutin currentColor */}
+          <svg viewBox="25 50 180 130" className="w-5 h-5" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true">
+            <path d="M116 150 Q108 152 96 149 Q106 145 114 144 Z" />
+            <path d="M104 140 Q60 138 40 148 Q54 132 70 128 Q86 126 106 136 Z" />
+            <ellipse cx="132" cy="140" rx="34" ry="13" transform="rotate(-8 132 140)" />
+            <path d="M110 132 Q100 128 92 129 Q98 132 104 136 Q107 138 111 137 Z" />
+            <path d="M128 122 Q134 84 168 68 Q160 96 148 116 Q140 124 128 122 Z" />
+            <path d="M122 118 Q126 76 158 58 Q152 88 140 110 Q132 118 122 118 Z" />
+            <path
+              d="M176 150 L182 166 M188 148 L196 163"
+              strokeWidth="4"
+              strokeLinecap="round"
+              fill="none"
+            />
+          </svg>
+        </span>
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-bold text-gray-900 dark:text-white leading-snug">
             {title}

@@ -21,8 +21,7 @@ import CmsDashboard from './cms/CmsDashboard';
 import WelcomeToast from './components/WelcomeToast';
 import WatermarkBackground from './components/WatermarkBackground';
 import CommentTicker from './components/CommentTicker';
-import GuidanceNote from './components/GuidanceNote';
-import PrintPortfolio from './components/PrintPortfolio';
+import HintToggle from './components/HintToggle';
 import PelicanLoader from './components/PelicanLoader';
 
 // Menghitung total kata secara rekursif dari objek/array data apapun (dipakai untuk word count di StatusBar)
@@ -167,6 +166,15 @@ export default function App() {
     () => sessionStorage.getItem('cms_admin_authed') === 'true'
   );
 
+  // Mode "Hint" — toggle dari tombol HintToggle di pojok kiri atas. Pas true, semua
+  // elemen `data-hint-id` di tab yang lagi kebuka ikutan blink (lihat class
+  // `.hint-mode-active` di CSS global bawah). Otomatis dimatiin lagi tiap kali visitor
+  // pindah tab, biar gak "nempel nyala" pas dia geser ke tab lain yang gak dia cek dulu.
+  const [hintActive, setHintActive] = useState(false);
+  useEffect(() => {
+    setHintActive(false);
+  }, [activeTab]);
+
   // Kirim "page view" tiap kali visitor pindah tab (Home/About/Career/dst) — biar
   // tiap tab kehitung sebagai halaman sendiri di laporan Analytics, bukan cuma
   // sekali doang pas web pertama dibuka. Skip pas lagi di Admin Mode.
@@ -277,17 +285,9 @@ export default function App() {
     return <PelicanLoader />;
   }
 
-  // Dipanggil dari tombol "Download PDF" di tab Home. Trigger dialog print bawaan
-  // browser — visitor tinggal pilih tujuan "Save as PDF". Yang beneran di-print
-  // adalah <PrintPortfolio> (dirender tersembunyi di bawah, isinya SEMUA tab
-  // dibentang penuh), bukan tampilan Word yang lagi aktif ini.
-  const handleDownloadPdf = () => {
-    window.print();
-  };
-
   const documentBody = (
     <div className={`relative z-10 w-full h-full ${isBold ? 'font-bold' : ''} ${isItalic ? 'italic' : ''} ${isUnderline ? 'underline' : ''}`}>
-      {activeTab === 'Home' && <Home data={portfolioData.home} onDownloadPdf={handleDownloadPdf} />}
+      {activeTab === 'Home' && <Home data={portfolioData.home} />}
       {activeTab === 'About' && <About data={portfolioData.about} />}
       {activeTab === 'Career' && <Career data={portfolioData.career} />}
       {activeTab === 'Book' && <Book data={portfolioData.books} />}
@@ -298,7 +298,7 @@ export default function App() {
 
   return (
     <div className={darkMode ? 'dark' : ''}>
-      <div className="print:hidden min-h-screen bg-[#e6e6e6] dark:bg-[#181818] flex flex-col justify-between selection:bg-blue-500 selection:text-white">
+      <div className={`print:hidden min-h-screen bg-[#e6e6e6] dark:bg-[#181818] flex flex-col justify-between selection:bg-blue-500 selection:text-white ${hintActive ? 'hint-mode-active' : ''}`}>
 
         {/* Pesan error kalau gagal konek/simpen ke Supabase */}
         {(loadError || saveError) && (
@@ -364,17 +364,14 @@ export default function App() {
           <CommentTicker quotes={portfolioData.quotes} />
         )}
 
-        {/* Kotak "Guidance / Hint" — beda dari CommentTicker di atas, ini SENGAJA diem
-            di tempat (gak ada animasi jalan/loop), nempel di tepi KIRI (bukan kanan),
-            nunjukin panduan singkat sesuai tab publik yang lagi dibuka (activeTab).
-            Sama kayak CommentTicker: disembunyiin di HP & pas Admin Mode kebuka, dan
-            dipasang di luar div kertas yang punya transform: scale biar posisinya gak
-            ikut ke-scale pas zoom. */}
+        {/* Tombol "Hint" — nempel di pojok KIRI ATAS, di luar kertas A4. Diklik = toggle
+            mode hint on/off, yang bikin semua elemen `data-hint-id` di tab yang lagi
+            kebuka ikut blink (lihat CSS `.hint-mode-active` di bawah). GANTI dari
+            GuidanceNote lama (kotak teks statis per-tab). Sama kayak sebelumnya:
+            disembunyiin di HP & pas Admin Mode, dipasang di luar div kertas yang
+            punya transform: scale biar posisinya gak ikut ke-scale pas zoom. */}
         {!isMobileLayout && !isAdminMode && (
-          <GuidanceNote
-            heading={portfolioData.patrol?.heading}
-            text={portfolioData.patrol?.[activeTab]}
-          />
+          <HintToggle active={hintActive} onToggle={() => setHintActive((v) => !v)} />
         )}
 
         {/* Notifikasi welcome — beda dari CommentTicker di atas, ini SENGAJA tetep muncul
@@ -481,11 +478,31 @@ export default function App() {
           isMobileLayout={isMobileLayout}
         />
 
-      </div>
+        {/* CSS global mode Hint — cuma nyala pas class `.hint-mode-active` ada di wrapper
+            (lihat atas). Nge-target SEMUA elemen `data-hint-id` yang lagi kerender di tab
+            yang aktif, otomatis, tanpa perlu tau id-nya satu-satu. `outline` dipakai (bukan
+            border) biar gak geser layout sedikitpun. */}
+        <style>{`
+          .hint-mode-active [data-hint-id] {
+            position: relative;
+            animation: hintPulse 1.5s ease-in-out infinite;
+            outline: 2px solid #2B579A;
+            outline-offset: 3px;
+            border-radius: 6px;
+          }
+          .dark .hint-mode-active [data-hint-id] {
+            outline-color: #6FA8DC;
+          }
+          @keyframes hintPulse {
+            0%, 100% { outline-color: rgba(43, 87, 154, 0.35); box-shadow: 0 0 0 0 rgba(43, 87, 154, 0.25); }
+            50% { outline-color: rgba(43, 87, 154, 1); box-shadow: 0 0 0 4px rgba(43, 87, 154, 0.12); }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .hint-mode-active [data-hint-id] { animation: none; outline-color: #2B579A; }
+          }
+        `}</style>
 
-      {/* Versi khusus buat Download PDF — normalnya tersembunyi total (lihat class
-          "hidden print:block" di dalam komponennya), cuma nongol pas dialog print aktif. */}
-      <PrintPortfolio data={portfolioData} />
+      </div>
     </div>
   );
 }

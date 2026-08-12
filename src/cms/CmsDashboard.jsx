@@ -61,6 +61,7 @@ const emptyCareerItem = () => ({
   location: '',
   period: '',
   description: '',
+  hintEnabled: true,
   companyInfo: { name: '', address: '', photo: '', about: '' },
 });
 
@@ -101,6 +102,7 @@ const emptyBook = () => ({
   pageCount: '',
   actionText: '',
   actionUrl: '',
+  hintEnabled: true,
 });
 
 const emptyArticle = () => ({
@@ -112,6 +114,7 @@ const emptyArticle = () => ({
   snippet: '',
   content: '',
   image: '',
+  hintEnabled: true,
 });
 
 const emptyGalleryItem = (type) => ({
@@ -121,6 +124,7 @@ const emptyGalleryItem = (type) => ({
   dimensions: '',
   imageUrl: '',
   description: '',
+  hintEnabled: true,
 });
 
 // Jaga-jaga: data projects di Supabase bisa aja masih format lama (projects.posters
@@ -645,7 +649,18 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                 {type === 'poster' ? 'Poster' : 'Foto'} #{idx + 1}
               </h4>
             </div>
-            <RemoveBtn onClick={() => removeGalleryItem(type, idx)} />
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={it.hintEnabled !== false}
+                  onChange={(e) => setGalleryItemField(type, idx, 'hintEnabled', e.target.checked)}
+                  className="accent-blue-600"
+                />
+                Blink pas mode Hint
+              </label>
+              <RemoveBtn onClick={() => removeGalleryItem(type, idx)} />
+            </div>
           </div>
           <input type="text" value={it.title} onChange={(e) => setGalleryItemField(type, idx, 'title', e.target.value)} placeholder="Judul" className={inputClsSm} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -894,7 +909,18 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                   <div key={item.id || idx} className="p-4 bg-gray-50 dark:bg-[#2d2d2d] rounded border border-gray-200 dark:border-gray-700 space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">Item #{idx + 1}</h4>
-                      <RemoveBtn onClick={() => removeCareerItem(category, idx)} label="Hapus Item" />
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={item.hintEnabled !== false}
+                            onChange={(e) => setCareerItemField(category, idx, 'hintEnabled', e.target.checked)}
+                            className="accent-blue-600"
+                          />
+                          Blink pas mode Hint
+                        </label>
+                        <RemoveBtn onClick={() => removeCareerItem(category, idx)} label="Hapus Item" />
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -967,7 +993,18 @@ export default function CmsDashboard({ data, onSave, onClose }) {
               <div key={book.id || idx} className="p-4 bg-gray-50 dark:bg-[#2d2d2d] rounded border border-gray-200 dark:border-gray-700 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">Item #{idx + 1}</h4>
-                  <RemoveBtn onClick={() => removeBook(idx)} />
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={book.hintEnabled !== false}
+                        onChange={(e) => setBookField(idx, 'hintEnabled', e.target.checked)}
+                        className="accent-blue-600"
+                      />
+                      Blink pas mode Hint
+                    </label>
+                    <RemoveBtn onClick={() => removeBook(idx)} />
+                  </div>
                 </div>
                 <input type="text" value={book.title} onChange={(e) => setBookField(idx, 'title', e.target.value)} placeholder="Judul Buku / Karya" className={inputClsSm} />
                 <input type="text" value={book.category} onChange={(e) => setBookField(idx, 'category', e.target.value)} placeholder="Kategori (mis. E-Book / Artikel)" className={inputClsSm} />
@@ -1073,7 +1110,18 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                         Artikel #{idx + 1} {idx === 0 && <span className="text-blue-500">(Unggulan)</span>}
                       </h4>
                     </div>
-                    <RemoveBtn onClick={() => removeArticle(idx)} />
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={art.hintEnabled !== false}
+                          onChange={(e) => setArticleField(idx, 'hintEnabled', e.target.checked)}
+                          className="accent-blue-600"
+                        />
+                        Blink pas mode Hint
+                      </label>
+                      <RemoveBtn onClick={() => removeArticle(idx)} />
+                    </div>
                   </div>
                   <input type="text" value={art.title} onChange={(e) => setArticleField(idx, 'title', e.target.value)} placeholder="Judul Artikel" className={inputClsSm} />
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">

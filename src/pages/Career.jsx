@@ -51,6 +51,7 @@ export default function Career({ data }) {
                 <button
                   key={key}
                   type="button"
+                  data-hint-id={`career-category-${key}`}
                   onClick={() => setSelectedCategory(key)}
                   className={`group relative h-64 sm:h-80 rounded-2xl overflow-hidden border-2 transition-all duration-300 hover:-translate-y-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] ${
                     bgImage
@@ -143,6 +144,7 @@ export default function Career({ data }) {
                   <button
                     type="button"
                     onClick={() => setSelectedPopup(item.companyInfo)}
+                    {...(item.hintEnabled !== false ? { 'data-hint-id': `career-company-${item.id || idx}` } : {})}
                     className="font-mono text-sm text-gray-700 dark:text-gray-300 underline decoration-gray-400 dark:decoration-gray-600 underline-offset-2 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] hover:decoration-[#2B579A] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] rounded"
                     title="Klik untuk melihat detail"
                   >

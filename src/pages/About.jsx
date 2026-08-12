@@ -33,6 +33,7 @@ export default function About({ data }) {
           >
             <button
               type="button"
+              data-hint-id={`about-toggle-${key}`}
               onClick={() => toggleSection(key)}
               className="w-full flex items-center gap-3 py-4 text-left"
             >
