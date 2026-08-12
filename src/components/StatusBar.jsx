@@ -19,10 +19,11 @@ export default function StatusBar({ activePage, wordCount, viewMode, setViewMode
   const handleZoomIn = () => setZoomLevel && setZoomLevel(Math.min(200, currentZoom + 10));
   const handleZoomSlide = (e) => setZoomLevel && setZoomLevel(Number(e.target.value));
 
-  const ViewIcon = ({ active, title, onClick, children }) => (
+  const ViewIcon = ({ active, title, onClick, children, ...rest }) => (
     <button
       onClick={onClick}
       title={title}
+      {...rest}
       className={`p-1 rounded transition-colors ${
         active
           ? 'bg-gray-300/80 dark:bg-gray-600/70'
@@ -63,13 +64,13 @@ export default function StatusBar({ activePage, wordCount, viewMode, setViewMode
       <div className="flex items-center gap-3">
 
         <div className="hidden sm:flex items-center gap-0.5">
-          <ViewIcon active={viewMode === 'read'} onClick={() => setViewMode('read')} title="Read Mode">
+          <ViewIcon active={viewMode === 'read'} onClick={() => setViewMode('read')} title="Read Mode" data-hint-id={activePage === 'Home' ? 'statusbar-view-read' : undefined}>
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
               <path d="M12 5c-2-1.3-4.5-2-7-2v14c2.5 0 5 .7 7 2 2-1.3 4.5-2 7-2V3c-2.5 0-5 .7-7 2z" strokeLinejoin="round" />
               <line x1="12" y1="5" x2="12" y2="19" />
             </svg>
           </ViewIcon>
-          <ViewIcon active={viewMode === 'print'} onClick={() => setViewMode('print')} title="Print Layout">
+          <ViewIcon active={viewMode === 'print'} onClick={() => setViewMode('print')} title="Print Layout" data-hint-id={activePage === 'Home' ? 'statusbar-view-print' : undefined}>
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
               <rect x="6" y="3" width="12" height="18" rx="0.5" />
               <line x1="8.5" y1="8" x2="15.5" y2="8" />
@@ -77,7 +78,7 @@ export default function StatusBar({ activePage, wordCount, viewMode, setViewMode
               <line x1="8.5" y1="14" x2="13" y2="14" />
             </svg>
           </ViewIcon>
-          <ViewIcon active={viewMode === 'web'} onClick={() => setViewMode('web')} title="Web Layout">
+          <ViewIcon active={viewMode === 'web'} onClick={() => setViewMode('web')} title="Web Layout" data-hint-id={activePage === 'Home' ? 'statusbar-view-web' : undefined}>
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
               <rect x="3" y="4" width="18" height="16" rx="1" />
               <line x1="3" y1="8" x2="21" y2="8" />
@@ -104,6 +105,7 @@ export default function StatusBar({ activePage, wordCount, viewMode, setViewMode
               step={10}
               value={currentZoom}
               onChange={handleZoomSlide}
+              data-hint-id={activePage === 'Home' ? 'statusbar-zoom-slider' : undefined}
               className="w-24 accent-gray-600 dark:accent-gray-300 cursor-pointer"
               title={`Zoom: ${currentZoom}%`}
             />

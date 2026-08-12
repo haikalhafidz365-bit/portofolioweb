@@ -1,13 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase, IMAGES_BUCKET } from '../lib/supabaseClient';
 
-const TABS = ['home', 'about', 'career', 'book', 'projects', 'contact', 'patrol', 'odds', 'quotes', 'general'];
-
-// Daftar tab publik yang butuh teks guidance sendiri-sendiri di section Patrol — SENGAJA
-// pakai nama persis kayak `activeTab` di App.jsx (huruf besar di awal: 'Home', 'About',
-// dst), biar App.jsx bisa langsung ambil `portfolioData.patrol[activeTab]` tanpa perlu
-// mapping tambahan.
-const PATROL_TABS = ['Home', 'About', 'Career', 'Book', 'Projects', 'Contact'];
+const TABS = ['home', 'about', 'career', 'book', 'projects', 'contact', 'odds', 'quotes', 'general'];
 
 // Metadata buat kartu menu utama CMS — cukup diedit di sini kalau mau ganti label/ikon/deskripsi
 const TAB_META = {
@@ -15,9 +9,8 @@ const TAB_META = {
   about: { label: 'About', desc: 'Cerita Live, Life, Laugh' },
   career: { label: 'Career', desc: 'Riwayat sekolah, kuliah & profesional' },
   book: { label: 'Book', desc: 'Buku, tulisan & karya open-source' },
-  projects: { label: 'Projects', desc: 'Artikel & galeri visual' },
+  projects: { label: 'Projects', desc: 'Artikel & Poster' },
   contact: { label: 'Contact', desc: 'Info kontak, sosmed & tombol aksi' },
-  patrol: { label: 'Patrol', desc: 'Teks guidance/hint statis buat pengunjung, satu per tab' },
   odds: { label: 'Odds', desc: 'Serpihan tulisan buat aksen latar di semua tab' },
   quotes: { label: 'Quotes', desc: 'Kutipan buat balon komentar berjalan di tepi kanan' },
   general: { label: 'General', desc: 'Pengaturan situs — notifikasi welcome, dll' },
@@ -40,17 +33,6 @@ const normalizeGeneral = (raw) => ({
     ...(raw?.welcomeNotification || {}),
   },
 });
-// Jaring pengaman sama kayak normalizeGeneral: kalau data lama di Supabase belum
-// punya field `patrol` sama sekali, atau cuma punya sebagian tab-nya, isi kosong
-// dulu buat tab yang belum ada (biar textarea-nya gak "undefined" & gak crash).
-const DEFAULT_PATROL_HEADING = 'Guidance / Hint';
-function normalizePatrol(raw) {
-  const out = { heading: raw?.heading || DEFAULT_PATROL_HEADING };
-  PATROL_TABS.forEach((tab) => {
-    out[tab] = typeof raw?.[tab] === 'string' ? raw[tab] : '';
-  });
-  return out;
-}
 
 const CAREER_CATEGORIES = ['professional', 'school', 'college'];
 
@@ -117,8 +99,8 @@ const emptyArticle = () => ({
   hintEnabled: true,
 });
 
-const emptyGalleryItem = (type) => ({
-  id: `${type}-${Date.now()}`,
+const emptyPosterItem = () => ({
+  id: `poster-item-${Date.now()}`,
   title: '',
   category: '',
   dimensions: '',
@@ -127,29 +109,47 @@ const emptyGalleryItem = (type) => ({
   hintEnabled: true,
 });
 
-// Jaga-jaga: data projects di Supabase bisa aja masih format lama (projects.posters
-// array polos, tanpa heading/subheading, tanpa gallery), sementara format baru butuh
-// { heading, subheading, articles, gallery: { poster, photo } }.
+const emptySubBab = (name = '') => ({
+  id: `subbab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+  name,
+  items: [],
+});
+
+// Jaga-jaga: data projects di Supabase bisa aja masih format lama:
+//  - projects.posters: array polos (format paling lama)
+//  - projects.gallery: { poster: [...], photo: [...] } (format sebelum ada Sub Bab)
+// Semua itu dimigrasiin otomatis jadi format baru: projects.poster.subBabs (array
+// sub bab, tiap sub bab punya nama + daftar item sendiri). Item poster lama yang
+// belum punya sub bab dikumpulin jadi 1 sub bab default "Umum" biar gak ilang.
+// `photo` SENGAJA gak dimigrasiin lagi — fitur Photo udah dihapus dari CMS & halaman publik.
 function normalizeProjectsData(raw) {
   const projects = raw || {};
   const articles = Array.isArray(projects.articles) ? projects.articles : [];
 
-  let gallery = projects.gallery;
-  if (!gallery || typeof gallery !== 'object' || Array.isArray(gallery)) {
-    // Format lama: projects.posters adalah array polos
-    gallery = { poster: Array.isArray(projects.posters) ? projects.posters : [], photo: [] };
+  let subBabs;
+  if (projects.poster && Array.isArray(projects.poster.subBabs)) {
+    // Format baru — sudah oke, tinggal pastiin tiap sub bab punya items array
+    subBabs = projects.poster.subBabs.map((sb) => ({
+      id: sb.id || emptySubBab().id,
+      name: sb.name || '',
+      items: Array.isArray(sb.items) ? sb.items : [],
+    }));
   } else {
-    gallery = {
-      poster: Array.isArray(gallery.poster) ? gallery.poster : [],
-      photo: Array.isArray(gallery.photo) ? gallery.photo : [],
-    };
+    // Format lama: kumpulin item poster yang ada (dari gallery.poster atau projects.posters)
+    // jadi 1 sub bab default, biar data lama gak ilang.
+    const oldItems = Array.isArray(projects.gallery?.poster)
+      ? projects.gallery.poster
+      : Array.isArray(projects.posters)
+      ? projects.posters
+      : [];
+    subBabs = oldItems.length > 0 ? [{ ...emptySubBab('Umum'), items: oldItems }] : [];
   }
 
   return {
     heading: projects.heading || '',
     subheading: projects.subheading || '',
     articles,
-    gallery,
+    poster: { subBabs },
   };
 }
 
@@ -270,7 +270,6 @@ export default function CmsDashboard({ data, onSave, onClose }) {
       career: normalizedCareer,
       books: normalizeBooksData(cloned.books),
       projects: normalizeProjectsData(cloned.projects),
-      patrol: normalizePatrol(cloned.patrol),
       odds: Array.isArray(cloned.odds) ? cloned.odds : [],
       quotes: Array.isArray(cloned.quotes) ? cloned.quotes : [],
       general: normalizeGeneral(cloned.general),
@@ -280,6 +279,7 @@ export default function CmsDashboard({ data, onSave, onClose }) {
   const [activeTab, setActiveTab] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isUploadingPhotoDark, setIsUploadingPhotoDark] = useState(false);
   // Nyimpen kategori career mana yang lagi proses upload bgImage-nya (biar spinner-nya per-kategori)
   const [uploadingCareerBg, setUploadingCareerBg] = useState(null);
   // Kunci berupa "kategori-idx" buat nandain item mana yang lagi upload foto instansinya
@@ -292,7 +292,7 @@ export default function CmsDashboard({ data, onSave, onClose }) {
   const [uploadingArticleImage, setUploadingArticleImage] = useState(null);
   // Index tombol aksi (di tab Contact) yang lagi proses upload file-nya (mis. PDF resume)
   const [uploadingActionButton, setUploadingActionButton] = useState(null);
-  // Kunci berupa "poster-idx" / "photo-idx" buat nandain item gallery mana yang lagi upload
+  // Kunci berupa "poster-{subBabIdx}-{itemIdx}" buat nandain item poster mana yang lagi upload
   const [uploadingGalleryImage, setUploadingGalleryImage] = useState(null);
 
   const handleSave = async (e) => {
@@ -326,7 +326,6 @@ export default function CmsDashboard({ data, onSave, onClose }) {
         career: normalizedCareer,
         books: normalizeBooksData(cloned.books),
         projects: normalizeProjectsData(cloned.projects),
-        patrol: normalizePatrol(cloned.patrol),
         odds: Array.isArray(cloned.odds) ? cloned.odds : [],
         quotes: Array.isArray(cloned.quotes) ? cloned.quotes : [],
         general: normalizeGeneral(cloned.general),
@@ -338,12 +337,6 @@ export default function CmsDashboard({ data, onSave, onClose }) {
   /* ============ HOME ============ */
   const setHome = (field, value) =>
     setFormData((p) => ({ ...p, home: { ...p.home, [field]: value } }));
-
-  /* ============ PATROL ============ */
-  // Satu setter buat 2 hal: teks guidance per tab (kirim tabKey = 'Home'/'About'/dst)
-  // dan judul kotaknya sendiri (kirim tabKey = 'heading').
-  const setPatrol = (tabKey, value) =>
-    setFormData((p) => ({ ...p, patrol: { ...p.patrol, [tabKey]: value } }));
 
   /* ============ ODDS ============ */
   // Textarea satu baris = satu serpihan teks. Baris kosong disaring pas dipakai di
@@ -459,28 +452,50 @@ export default function CmsDashboard({ data, onSave, onClose }) {
       projects: { ...p.projects, articles: p.projects.articles.filter((_, i) => i !== idx) },
     }));
 
-  const setGalleryItemField = (type, idx, field, value) =>
+  /* ============ PROJECTS: POSTER (dikelompokkan per Sub Bab) ============ */
+  const addSubBab = () =>
+    setFormData((p) => ({
+      ...p,
+      projects: {
+        ...p.projects,
+        poster: { subBabs: [...p.projects.poster.subBabs, emptySubBab()] },
+      },
+    }));
+  const removeSubBab = (subBabIdx) =>
+    setFormData((p) => ({
+      ...p,
+      projects: {
+        ...p.projects,
+        poster: { subBabs: p.projects.poster.subBabs.filter((_, i) => i !== subBabIdx) },
+      },
+    }));
+  const setSubBabName = (subBabIdx, name) =>
     setFormData((p) => {
-      const items = [...p.projects.gallery[type]];
-      items[idx] = { ...items[idx], [field]: value };
-      return { ...p, projects: { ...p.projects, gallery: { ...p.projects.gallery, [type]: items } } };
+      const subBabs = [...p.projects.poster.subBabs];
+      subBabs[subBabIdx] = { ...subBabs[subBabIdx], name };
+      return { ...p, projects: { ...p.projects, poster: { subBabs } } };
     });
-  const addGalleryItem = (type) =>
-    setFormData((p) => ({
-      ...p,
-      projects: {
-        ...p.projects,
-        gallery: { ...p.projects.gallery, [type]: [...p.projects.gallery[type], emptyGalleryItem(type)] },
-      },
-    }));
-  const removeGalleryItem = (type, idx) =>
-    setFormData((p) => ({
-      ...p,
-      projects: {
-        ...p.projects,
-        gallery: { ...p.projects.gallery, [type]: p.projects.gallery[type].filter((_, i) => i !== idx) },
-      },
-    }));
+
+  const setPosterItemField = (subBabIdx, itemIdx, field, value) =>
+    setFormData((p) => {
+      const subBabs = [...p.projects.poster.subBabs];
+      const items = [...subBabs[subBabIdx].items];
+      items[itemIdx] = { ...items[itemIdx], [field]: value };
+      subBabs[subBabIdx] = { ...subBabs[subBabIdx], items };
+      return { ...p, projects: { ...p.projects, poster: { subBabs } } };
+    });
+  const addPosterItem = (subBabIdx) =>
+    setFormData((p) => {
+      const subBabs = [...p.projects.poster.subBabs];
+      subBabs[subBabIdx] = { ...subBabs[subBabIdx], items: [...subBabs[subBabIdx].items, emptyPosterItem()] };
+      return { ...p, projects: { ...p.projects, poster: { subBabs } } };
+    });
+  const removePosterItem = (subBabIdx, itemIdx) =>
+    setFormData((p) => {
+      const subBabs = [...p.projects.poster.subBabs];
+      subBabs[subBabIdx] = { ...subBabs[subBabIdx], items: subBabs[subBabIdx].items.filter((_, i) => i !== itemIdx) };
+      return { ...p, projects: { ...p.projects, poster: { subBabs } } };
+    });
 
   /* ============ CONTACT ============ */
   const setContactField = (field, value) =>
@@ -523,8 +538,8 @@ export default function CmsDashboard({ data, onSave, onClose }) {
       contact: { ...p.contact, actionButtons: p.contact.actionButtons.filter((_, i) => i !== idx) },
     }));
 
-  /* ============ REORDER (Articles & Gallery) ============ */
-  // listKey: 'articles', 'poster', atau 'photo' — nyimpen daftar mana yang lagi diurutin
+  /* ============ REORDER (Articles & Poster items per Sub Bab) ============ */
+  // listKey: 'articles' ATAU 'poster-{subBabIdx}' — nyimpen daftar mana yang lagi diurutin
   const dragInfo = useRef({ listKey: null, index: null });
   const [draggingKey, setDraggingKey] = useState(null);
 
@@ -538,14 +553,17 @@ export default function CmsDashboard({ data, onSave, onClose }) {
         articles.splice(toIdx, 0, moved);
         return { ...p, projects: { ...p.projects, articles } };
       });
-    } else {
+    } else if (listKey.startsWith('poster-')) {
+      const subBabIdx = Number(listKey.slice('poster-'.length));
       setFormData((p) => {
-        const items = p.projects.gallery[listKey];
+        const subBabs = [...p.projects.poster.subBabs];
+        const items = subBabs[subBabIdx].items;
         if (toIdx >= items.length) return p;
         const newItems = [...items];
         const [moved] = newItems.splice(fromIdx, 1);
         newItems.splice(toIdx, 0, moved);
-        return { ...p, projects: { ...p.projects, gallery: { ...p.projects.gallery, [listKey]: newItems } } };
+        subBabs[subBabIdx] = { ...subBabs[subBabIdx], items: newItems };
+        return { ...p, projects: { ...p.projects, poster: { subBabs } } };
       });
     }
   };
@@ -625,76 +643,96 @@ export default function CmsDashboard({ data, onSave, onClose }) {
     </button>
   );
 
-  // Blok form Gallery — dipakai sama persis buat sub-tab Poster maupun Photo,
-  // biar dua-duanya konsisten (cuma beda "type": 'poster' atau 'photo')
-  const GallerySection = ({ type, label, items }) => (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">{label}</h3>
-        <AddBtn onClick={() => addGalleryItem(type)} label={`Tambah ${type === 'poster' ? 'Poster' : 'Foto'}`} />
-      </div>
-      {items.map((it, idx) => (
-        <div
-          key={it.id || idx}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop(type, idx)}
-          className={`p-4 bg-gray-50 dark:bg-[#2d2d2d] rounded border border-gray-200 dark:border-gray-700 space-y-2 transition-opacity ${
-            draggingKey === `${type}-${idx}` ? 'opacity-40' : ''
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <ReorderHandle listKey={type} idx={idx} count={items.length} />
-              <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                {type === 'poster' ? 'Poster' : 'Foto'} #{idx + 1}
-              </h4>
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={it.hintEnabled !== false}
-                  onChange={(e) => setGalleryItemField(type, idx, 'hintEnabled', e.target.checked)}
-                  className="accent-blue-600"
-                />
-                Blink pas mode Hint
-              </label>
-              <RemoveBtn onClick={() => removeGalleryItem(type, idx)} />
-            </div>
-          </div>
-          <input type="text" value={it.title} onChange={(e) => setGalleryItemField(type, idx, 'title', e.target.value)} placeholder="Judul" className={inputClsSm} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <input type="text" value={it.category} onChange={(e) => setGalleryItemField(type, idx, 'category', e.target.value)} placeholder="Kategori" className={inputClsSm} />
-            <input type="text" value={it.dimensions} onChange={(e) => setGalleryItemField(type, idx, 'dimensions', e.target.value)} placeholder="Dimensi/Info (mis. 2400x3000px)" className={inputClsSm} />
-          </div>
-
-          <div className="flex items-center gap-2">
-            {it.imageUrl && (
-              <img src={it.imageUrl} alt={it.title} className="w-14 h-14 rounded object-cover border border-gray-300 dark:border-gray-600 shrink-0" />
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              disabled={uploadingGalleryImage === `${type}-${idx}`}
-              onChange={async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                setUploadingGalleryImage(`${type}-${idx}`);
-                const url = await uploadImageToStorage(file);
-                setUploadingGalleryImage(null);
-                if (url) setGalleryItemField(type, idx, 'imageUrl', url);
-                e.target.value = '';
-              }}
-              className="flex-1 text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/40 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/40 disabled:opacity-60"
-            />
-          </div>
-          <input type="text" value={it.imageUrl} onChange={(e) => setGalleryItemField(type, idx, 'imageUrl', e.target.value)} placeholder="Atau tempel URL Gambar (dari galeri/hosting lain)" className={inputClsSm} />
-
-          <textarea rows={2} value={it.description} onChange={(e) => setGalleryItemField(type, idx, 'description', e.target.value)} placeholder="Deskripsi singkat (penjelasan karya)" className={`${inputClsSm} resize-none`} />
+  // Blok form 1 Sub Bab Poster — nama sub bab (bisa diedit/dihapus) + daftar item poster
+  // di dalamnya (bisa ditambah/diurutin/dihapus, sama kayak form item lama).
+  const PosterSubBabSection = ({ subBab, subBabIdx }) => {
+    const listKey = `poster-${subBabIdx}`;
+    const items = subBab.items;
+    return (
+      <div className="p-4 bg-gray-50 dark:bg-[#252526] rounded border border-gray-200 dark:border-gray-700 space-y-3">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={subBab.name}
+            onChange={(e) => setSubBabName(subBabIdx, e.target.value)}
+            placeholder="Nama Sub Bab (mis. UI/UX Design, Branding, dst)"
+            className={`${inputClsSm} font-semibold flex-1`}
+          />
+          <RemoveBtn onClick={() => removeSubBab(subBabIdx)} label="Hapus Sub Bab" />
         </div>
-      ))}
-    </div>
-  );
+
+        <div className="space-y-3 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              Item Poster ({items.length})
+            </h4>
+            <AddBtn onClick={() => addPosterItem(subBabIdx)} label="Tambah Poster" />
+          </div>
+
+          {items.map((it, idx) => (
+            <div
+              key={it.id || idx}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop(listKey, idx)}
+              className={`p-3 bg-white dark:bg-[#2d2d2d] rounded border border-gray-200 dark:border-gray-700 space-y-2 transition-opacity ${
+                draggingKey === `${listKey}-${idx}` ? 'opacity-40' : ''
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <ReorderHandle listKey={listKey} idx={idx} count={items.length} />
+                  <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                    Poster #{idx + 1}
+                  </h4>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={it.hintEnabled !== false}
+                      onChange={(e) => setPosterItemField(subBabIdx, idx, 'hintEnabled', e.target.checked)}
+                      className="accent-blue-600"
+                    />
+                    Blink pas mode Hint
+                  </label>
+                  <RemoveBtn onClick={() => removePosterItem(subBabIdx, idx)} />
+                </div>
+              </div>
+              <input type="text" value={it.title} onChange={(e) => setPosterItemField(subBabIdx, idx, 'title', e.target.value)} placeholder="Judul" className={inputClsSm} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <input type="text" value={it.category} onChange={(e) => setPosterItemField(subBabIdx, idx, 'category', e.target.value)} placeholder="Kategori" className={inputClsSm} />
+                <input type="text" value={it.dimensions} onChange={(e) => setPosterItemField(subBabIdx, idx, 'dimensions', e.target.value)} placeholder="Dimensi/Info (mis. 2400x3000px)" className={inputClsSm} />
+              </div>
+
+              <div className="flex items-center gap-2">
+                {it.imageUrl && (
+                  <img src={it.imageUrl} alt={it.title} className="w-14 h-14 rounded object-cover border border-gray-300 dark:border-gray-600 shrink-0" />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={uploadingGalleryImage === `${listKey}-${idx}`}
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    setUploadingGalleryImage(`${listKey}-${idx}`);
+                    const url = await uploadImageToStorage(file);
+                    setUploadingGalleryImage(null);
+                    if (url) setPosterItemField(subBabIdx, idx, 'imageUrl', url);
+                    e.target.value = '';
+                  }}
+                  className="flex-1 text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/40 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/40 disabled:opacity-60"
+                />
+              </div>
+              <input type="text" value={it.imageUrl} onChange={(e) => setPosterItemField(subBabIdx, idx, 'imageUrl', e.target.value)} placeholder="Atau tempel URL Gambar (dari galeri/hosting lain)" className={inputClsSm} />
+
+              <textarea rows={2} value={it.description} onChange={(e) => setPosterItemField(subBabIdx, idx, 'description', e.target.value)} placeholder="Deskripsi singkat (penjelasan karya)" className={`${inputClsSm} resize-none`} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 text-gray-900 dark:text-gray-100 p-4">
@@ -811,6 +849,45 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                 )}
               </div>
               {isUploadingPhoto && (
+                <p className="text-[10px] text-blue-500 mt-1 animate-pulse">Mengupload foto...</p>
+              )}
+              <p className="text-[10px] text-gray-400 mt-1">Upload dari galeri bakal nimpa link URL di atas (dan sebaliknya) — pakai salah satu aja.</p>
+            </Field>
+
+            <p className="text-xs text-gray-500 italic pt-2 border-t border-gray-100 dark:border-gray-800">
+              Foto di atas cuma dipakai pas web-nya Light Mode. Isi juga foto khusus buat Dark Mode di bawah ini (biasanya versi background gelap / warna asli) — kalau dikosongin, foto Light Mode di atas bakal dipakai buat dua-duanya.
+            </p>
+
+            <Field label="URL Foto Profil untuk Dark Mode (tempel link gambar)">
+              <input type="text" value={formData.home.photoUrlDark} onChange={(e) => setHome('photoUrlDark', e.target.value)} placeholder="https://..." className={inputCls} />
+            </Field>
+            <Field label="Atau Upload Foto Dark Mode dari Galeri/Perangkat Lo">
+              <div className="flex items-center gap-3">
+                {formData.home.photoUrlDark && (
+                  <img src={formData.home.photoUrlDark} alt="Preview Dark Mode" className="w-14 h-14 rounded-lg object-cover border border-gray-300 dark:border-gray-600 shrink-0 bg-[#202020]" />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={isUploadingPhotoDark}
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    setIsUploadingPhotoDark(true);
+                    const url = await uploadImageToStorage(file);
+                    setIsUploadingPhotoDark(false);
+                    if (url) setHome('photoUrlDark', url);
+                    e.target.value = ''; // biar bisa pilih file yang sama lagi kalau perlu
+                  }}
+                  className="flex-1 text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/40 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/40 disabled:opacity-60"
+                />
+                {formData.home.photoUrlDark && (
+                  <button type="button" onClick={() => setHome('photoUrlDark', '')} className="text-[10px] text-red-500 hover:text-red-600 font-semibold shrink-0">
+                    Hapus
+                  </button>
+                )}
+              </div>
+              {isUploadingPhotoDark && (
                 <p className="text-[10px] text-blue-500 mt-1 animate-pulse">Mengupload foto...</p>
               )}
               <p className="text-[10px] text-gray-400 mt-1">Upload dari galeri bakal nimpa link URL di atas (dan sebaliknya) — pakai salah satu aja.</p>
@@ -1167,9 +1244,22 @@ export default function CmsDashboard({ data, onSave, onClose }) {
               ))}
             </div>
 
-            {/* GALLERY — Poster & Photo, konsepnya sama (gambar + keterangan) */}
-            <GallerySection type="poster" label="Gallery — Poster" items={formData.projects.gallery.poster} />
-            <GallerySection type="photo" label="Gallery — Photo" items={formData.projects.gallery.photo} />
+            {/* POSTER — dikelompokkan per Sub Bab, tiap sub bab bisa ditambah/dihapus bebas */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Poster</h3>
+                <AddBtn onClick={addSubBab} label="Tambah Sub Bab" />
+              </div>
+              <p className="text-[10px] text-gray-400 -mt-1">
+                Sub Bab itu semacam folder buat ngelompokin poster (mis. "UI/UX Design", "Branding"). Di halaman publik, pengunjung pilih sub bab dulu baru lihat poster di dalamnya.
+              </p>
+              {formData.projects.poster.subBabs.length === 0 && (
+                <p className="text-[10px] text-gray-400 italic">Belum ada sub bab. Klik "+ Tambah Sub Bab" buat mulai.</p>
+              )}
+              {formData.projects.poster.subBabs.map((sb, subBabIdx) => (
+                <PosterSubBabSection key={sb.id || subBabIdx} subBab={sb} subBabIdx={subBabIdx} />
+              ))}
+            </div>
           </div>
         )}
 
@@ -1271,41 +1361,6 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                 ))}
               </div>
             </div>
-          </div>
-        )}
-
-        {/* ================= PATROL ================= */}
-        {activeTab === 'patrol' && (
-          <div className="space-y-3">
-            <h2 className="text-sm font-bold border-b pb-2 border-gray-100 dark:border-gray-800 text-blue-600 dark:text-blue-400">Tab Patrol</h2>
-            <p className="text-xs text-gray-500 italic">
-              Kotak guidance/hint putih yang diem di tempat (gak jalan/loop) di pojok
-              kiri-bawah luar kertas — cuma di desktop. Isinya beda-beda tergantung tab
-              publik yang lagi dibuka pengunjung. Kosongin salah satu kotak di bawah kalau
-              gak mau guidance-nya nongol di tab itu.
-            </p>
-
-            <Field label="Judul Kotak">
-              <input
-                type="text"
-                value={formData.patrol.heading}
-                onChange={(e) => setPatrol('heading', e.target.value)}
-                placeholder="Guidance / Hint"
-                className={inputCls}
-              />
-            </Field>
-
-            {PATROL_TABS.map((tab) => (
-              <Field key={tab} label={`Guidance buat Tab ${tab}`}>
-                <textarea
-                  rows={3}
-                  value={formData.patrol[tab]}
-                  onChange={(e) => setPatrol(tab, e.target.value)}
-                  placeholder={`Contoh: petunjuk singkat buat pengunjung yang lagi di tab ${tab}...`}
-                  className={`${inputCls} resize-y`}
-                />
-              </Field>
-            ))}
           </div>
         )}
 

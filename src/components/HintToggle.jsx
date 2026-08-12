@@ -1,10 +1,14 @@
 import React from 'react';
 
 // Tombol "Hint" — GANTI TOTAL dari GuidanceNote.jsx yang lama (kotak teks statis).
-// Sekarang konsepnya: nempel di pojok KIRI ATAS, di luar kertas A4, dan pas diklik
-// dia TOGGLE mode hint on/off. Pas mode hint AKTIF, semua elemen interaktif yang
-// ditandai `data-hint-id="..."` di halaman yang lagi kebuka bakal blink/pulse
-// otomatis lewat CSS global (lihat App.jsx, class `.hint-mode-active`).
+// Sekarang konsepnya: nempel di pojok KIRI BAWAH, di luar kertas A4 (SENGAJA dipindah
+// dari kiri atas — di atas situ udah penuh sama TitleBar/Ribbon/Ruler yang sticky &
+// gampang numpuk-nampuk z-index). Posisinya digeser `bottom-12` (bukan `bottom-4`
+// polos) biar ada jarak aman dari StatusBar yang nempel di paling bawah viewport —
+// kalau dipepetin ke bottom-4 dia numpuk sama StatusBar. Pas diklik dia TOGGLE mode
+// hint on/off. Pas mode hint AKTIF, semua elemen interaktif yang ditandai
+// `data-hint-id="..."` di halaman yang lagi kebuka bakal blink/pulse otomatis lewat
+// CSS global (lihat App.jsx, class `.hint-mode-active`).
 //
 // Kenapa gak perlu daftar/registry manual per tab: karena yang di-scan itu DOM yang
 // LAGI kerender (activeTab yang lagi kebuka), jadi otomatis "tau" elemen mana yang
@@ -22,7 +26,7 @@ export default function HintToggle({ active, onToggle }) {
       onClick={onToggle}
       aria-pressed={active}
       title={active ? 'Matikan mode hint' : 'Tunjukkan apa aja yang bisa diklik'}
-      className={`hidden lg:flex fixed left-3 top-20 z-30 items-center gap-1.5 pl-2.5 pr-3 py-2 rounded-full border shadow-lg font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+      className={`flex fixed left-3 bottom-12 z-50 items-center gap-1.5 pl-2.5 pr-3 py-2 rounded-full border shadow-lg font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors ${
         active
           ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
           : 'bg-white dark:bg-[#202020] border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 dark:hover:border-blue-800'

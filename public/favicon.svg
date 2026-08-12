@@ -1,23 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#eaf2fb"/>
+  <rect width="32" height="32" rx="7" fill="#2b579a"/>
 
-  <!-- Kepala (dikecilin, biar proporsional sama paruh yang panjang) -->
-  <ellipse cx="8.5" cy="13" rx="5" ry="4.6" fill="#2b579a"/>
-
-  <!-- Mata -->
-  <circle cx="9.8" cy="11.2" r="0.9" fill="#eaf2fb"/>
-
-  <!-- Paruh + kantong (pouch) jadi SATU bentuk memanjang — paruh atas nyaris lurus ke
-       ujung runcing, kantong bawah ikut memanjang sepanjang paruh (bukan cuma bulge
-       kecil deket kepala), baru menyempit ketemu ujung. Ini yang bikin kerasa proporsional
-       kayak pelikan asli. -->
-  <path
-    d="M12 11.5
-       Q 22 8.5 30 9.5
-       Q 25 12.5 22.5 14
-       Q 24.5 18.5 20.5 21.5
-       Q 15.5 23.5 13 18.5
-       Q 11 15 12 11.5 Z"
-    fill="#2b579a"
-  />
+  <!-- Siluet pelikan putih — bentuknya SAMA kayak icon di WelcomeToast & PelicanLoader,
+       cuma di-scale kecil biar pas di kotak 32x32 favicon -->
+  <g transform="translate(-5.18,-4.10) scale(0.1795)" fill="#ffffff" stroke="#ffffff" strokeWidth="10" strokeLinejoin="round">
+    <path d="M116 150 Q108 152 96 149 Q106 145 114 144 Z" />
+    <path d="M104 140 Q60 138 40 148 Q54 132 70 128 Q86 126 106 136 Z" />
+    <ellipse cx="132" cy="140" rx="34" ry="13" transform="rotate(-8 132 140)" />
+    <path d="M110 132 Q100 128 92 129 Q98 132 104 136 Q107 138 111 137 Z" />
+    <path d="M128 122 Q134 84 168 68 Q160 96 148 116 Q140 124 128 122 Z" />
+    <path d="M122 118 Q126 76 158 58 Q152 88 140 110 Q132 118 122 118 Z" />
+    <path d="M176 150 L182 166 M188 148 L196 163" strokeWidth="16" strokeLinecap="round" fill="none" />
+  </g>
 </svg>

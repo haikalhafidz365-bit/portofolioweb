@@ -112,10 +112,10 @@ export default function Contact({ data }) {
       {/* Konten Kontak — blok-nya di-center di halaman, tapi isi teksnya tetep rata kiri */}
       <div className="max-w-xl mx-auto">
 
-        <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white leading-snug tracking-tight">
+        <h2 className="text-[1.5em] sm:text-[1.875em] font-semibold text-gray-900 dark:text-white leading-snug tracking-tight">
           {contactInfo.heading}
         </h2>
-        <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed mt-2.5">
+        <p className="text-[0.875em] sm:text-[1em] text-gray-500 dark:text-gray-400 leading-relaxed mt-2.5">
           {contactInfo.subheading}
         </p>
 
@@ -127,11 +127,11 @@ export default function Contact({ data }) {
             onClick={handleCopyEmail}
             className="w-full flex items-center justify-between gap-3 py-3 text-left group"
           >
-            <span className="flex items-center gap-2.5 text-sm sm:text-base text-gray-700 dark:text-gray-300">
+            <span className="flex items-center gap-2.5 text-[0.875em] sm:text-[1em] text-gray-700 dark:text-gray-300">
               <Icon.Mail className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-hover:text-blue-600 transition-colors shrink-0" />
               {contactInfo.email}
             </span>
-            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-400 group-hover:text-blue-600 transition-colors shrink-0">
+            <span className="flex items-center gap-1.5 text-[0.75em] font-medium text-gray-400 group-hover:text-blue-600 transition-colors shrink-0">
               {copied ? (
                 <>
                   <Icon.Check className="w-3.5 h-3.5" /> Copied
@@ -145,12 +145,12 @@ export default function Contact({ data }) {
           </button>
 
           <div className="flex items-center justify-between gap-3 py-3">
-            <span className="flex items-center gap-2.5 text-sm sm:text-base text-gray-700 dark:text-gray-300">
+            <span className="flex items-center gap-2.5 text-[0.875em] sm:text-[1em] text-gray-700 dark:text-gray-300">
               <Icon.Pin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 shrink-0" />
               {location}
             </span>
             {availability && (
-              <span className="flex items-center gap-1.5 text-xs text-gray-400 shrink-0">
+              <span className="flex items-center gap-1.5 text-[0.75em] text-gray-400 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 {availability}
               </span>
@@ -166,7 +166,7 @@ export default function Contact({ data }) {
               href={btn.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex-1 px-5 py-2.5 text-sm font-semibold rounded-md text-center transition-colors ${
+              className={`flex-1 px-5 py-2.5 text-[0.875em] font-semibold rounded-md text-center transition-colors ${
                 btn.primary
                   ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200'
                   : 'border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white'
@@ -203,7 +203,7 @@ export default function Contact({ data }) {
               href={contactInfo.collabButtonUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="inline-flex items-center gap-1 text-[0.875em] font-medium text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               {contactInfo.collabButtonText}
               <Icon.Arrow className="w-3.5 h-3.5" />
@@ -212,7 +212,7 @@ export default function Contact({ data }) {
         </div>
 
         {contactInfo.closingText && (
-          <p className="text-sm text-gray-900 dark:text-white italic mt-3">
+          <p className="text-[0.875em] text-gray-900 dark:text-white italic mt-3">
             {contactInfo.closingText}
           </p>
         )}

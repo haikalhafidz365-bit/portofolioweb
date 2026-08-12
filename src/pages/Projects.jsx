@@ -5,13 +5,11 @@ export default function Projects({ data, initialArticleId }) {
   const heading = projectsData.heading || 'Projects, Articles & Visuals';
   const subheading =
     projectsData.subheading ||
-    'Kumpulan karya tulis artikel bergaya portal berita dan galeri visual pilihan.';
+    'Kumpulan karya tulis artikel bergaya portal berita dan galeri poster pilihan.';
   const articles = projectsData.articles || [];
-  const gallery = projectsData.gallery || {};
-  const galleryPoster = gallery.poster || [];
-  const galleryPhoto = gallery.photo || [];
+  const subBabs = projectsData.poster?.subBabs || [];
 
-  // Menu utama: 'articles' (tulisan) atau 'gallery' (poster & foto)
+  // Menu utama: 'articles' (tulisan) atau 'poster' (poster yang dikelompokkan per Sub Bab)
   const [activeCategory, setActiveCategory] = useState('articles');
 
   // Artikel yang lagi dibaca penuh (null = masih di daftar/mode Mojok)
@@ -20,9 +18,9 @@ export default function Projects({ data, initialArticleId }) {
   const [shareArticle, setShareArticle] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  // Sub-menu di dalam Gallery: 'poster' atau 'photo'
-  const [gallerySubTab, setGallerySubTab] = useState('poster');
-  // Item gallery yang lagi dibuka detailnya (null = masih di tampilan grid)
+  // Sub bab Poster yang lagi dibuka (null = masih di layar menu pilih Sub Bab)
+  const [selectedSubBabId, setSelectedSubBabId] = useState(null);
+  // Item poster yang lagi dibuka detailnya (null = masih di tampilan grid)
   const [selectedGalleryIndex, setSelectedGalleryIndex] = useState(null);
   // Kepadatan grid masonry: 'nyaman' (kartu gede, dikit kolom) atau 'padat'
   // (lebih banyak kolom, kartu lebih kecil). Default gede biar keliatan jelas.
@@ -33,7 +31,8 @@ export default function Projects({ data, initialArticleId }) {
   const featured = articles[0];
   const restArticles = articles.slice(1);
 
-  const activeGalleryItems = gallerySubTab === 'poster' ? galleryPoster : galleryPhoto;
+  const selectedSubBab = subBabs.find((sb) => sb.id === selectedSubBabId) || null;
+  const activeGalleryItems = selectedSubBab?.items || [];
   const selectedGalleryItem =
     selectedGalleryIndex !== null ? activeGalleryItems[selectedGalleryIndex] : null;
 
@@ -95,10 +94,10 @@ export default function Projects({ data, initialArticleId }) {
     }
   };
 
-  // Balik ke tampilan grid tiap kali pindah antara Poster <-> Photo
+  // Balik ke tampilan grid tiap kali pindah Sub Bab
   useEffect(() => {
     setSelectedGalleryIndex(null);
-  }, [gallerySubTab]);
+  }, [selectedSubBabId]);
 
   const nextGalleryItem = () =>
     setSelectedGalleryIndex((prev) => (prev + 1) % activeGalleryItems.length);
@@ -132,10 +131,10 @@ export default function Projects({ data, initialArticleId }) {
     <div className="w-full text-gray-900 dark:text-gray-100 select-text py-4">
 
       {/* Judul Halaman */}
-      <h1 className="text-2xl font-bold tracking-tight mb-2 text-gray-900 dark:text-white border-b pb-2 border-gray-200 dark:border-gray-700">
+      <h1 className="text-[1.5em] font-bold tracking-tight mb-2 text-gray-900 dark:text-white border-b pb-2 border-gray-200 dark:border-gray-700">
         {heading}
       </h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+      <p className="text-[0.875em] text-gray-500 dark:text-gray-400 mb-6">
         {subheading}
       </p>
 
@@ -143,7 +142,7 @@ export default function Projects({ data, initialArticleId }) {
       <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700 pb-3">
         {[
           { key: 'articles', label: 'Articles' },
-          { key: 'gallery', label: 'Gallery' },
+          { key: 'poster', label: 'Poster' },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -151,8 +150,9 @@ export default function Projects({ data, initialArticleId }) {
             onClick={() => {
               setActiveCategory(tab.key);
               setSelectedArticle(null);
+              setSelectedSubBabId(null);
             }}
-            className={`px-4 py-2 text-xs font-semibold rounded-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] ${
+            className={`px-4 py-2 text-[0.75em] font-semibold rounded-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] ${
               activeCategory === tab.key
                 ? 'bg-[#2B579A] dark:bg-[#6FA8DC] text-white dark:text-[#1a1a1a] shadow-sm'
                 : 'bg-gray-100 dark:bg-[#2d2d2d] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#383838]'
@@ -168,7 +168,7 @@ export default function Projects({ data, initialArticleId }) {
         <div>
           {!selectedArticle ? (
             articles.length === 0 ? (
-              <p className="text-sm text-gray-400 italic py-10 text-center">
+              <p className="text-[0.875em] text-gray-400 italic py-10 text-center">
                 Belum ada artikel yang ditambahkan.
               </p>
             ) : (
@@ -182,7 +182,7 @@ export default function Projects({ data, initialArticleId }) {
                     className="cursor-pointer group"
                   >
                     {featured.category && (
-                      <span className="inline-block bg-green-600 text-white text-[10px] sm:text-xs font-bold uppercase tracking-wide px-3 py-1.5 mb-3">
+                      <span className="inline-block bg-green-600 text-white text-[0.625em] sm:text-[0.75em] font-bold uppercase tracking-wide px-3 py-1.5 mb-3">
                         {featured.category}
                       </span>
                     )}
@@ -197,10 +197,10 @@ export default function Projects({ data, initialArticleId }) {
                         />
                       </div>
                     )}
-                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold leading-snug text-gray-900 dark:text-white group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors">
+                    <h2 className="text-[1.25em] sm:text-[1.5em] lg:text-[1.875em] font-extrabold leading-snug text-gray-900 dark:text-white group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors">
                       {featured.title}
                     </h2>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400 mt-3 font-mono">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.75em] text-gray-400 mt-3 font-mono">
                       {featured.author && (
                         <>
                           <span>
@@ -214,7 +214,7 @@ export default function Projects({ data, initialArticleId }) {
                       )}
                       <span>{featured.date}</span>
                     </div>
-                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed mt-4">
+                    <p className="text-[0.875em] sm:text-[1em] text-gray-600 dark:text-gray-400 leading-relaxed mt-4">
                       {featured.snippet}
                     </p>
                     <button
@@ -223,7 +223,7 @@ export default function Projects({ data, initialArticleId }) {
                         e.stopPropagation();
                         openArticle(featured);
                       }}
-                      className="mt-5 inline-flex items-center gap-2 text-[11px] sm:text-xs font-bold uppercase tracking-wide border border-gray-300 dark:border-gray-600 px-4 py-2 rounded-sm hover:border-green-600 hover:text-green-700 dark:hover:text-green-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
+                      className="mt-5 inline-flex items-center gap-2 text-[0.6875em] sm:text-[0.75em] font-bold uppercase tracking-wide border border-gray-300 dark:border-gray-600 px-4 py-2 rounded-sm hover:border-green-600 hover:text-green-700 dark:hover:text-green-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
                     >
                       Baca Selengkapnya
                     </button>
@@ -260,10 +260,10 @@ export default function Projects({ data, initialArticleId }) {
                           </div>
                         )}
                         <div className="min-w-0">
-                          <h3 className="text-sm font-bold leading-snug text-gray-900 dark:text-white group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors line-clamp-3">
+                          <h3 className="text-[0.875em] font-bold leading-snug text-gray-900 dark:text-white group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors line-clamp-3">
                             {art.title}
                           </h3>
-                          <span className="text-[10px] font-mono text-gray-400 mt-1.5 inline-block">
+                          <span className="text-[0.625em] font-mono text-gray-400 mt-1.5 inline-block">
                             {art.date}
                           </span>
                         </div>
@@ -279,14 +279,14 @@ export default function Projects({ data, initialArticleId }) {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <button
                   onClick={closeArticle}
-                  className="text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] bg-gray-100 dark:bg-[#2d2d2d] px-3 py-1.5 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
+                  className="text-[0.75em] font-semibold text-gray-600 dark:text-gray-300 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] bg-gray-100 dark:bg-[#2d2d2d] px-3 py-1.5 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
                 >
                   &larr; Kembali ke Daftar Artikel
                 </button>
 
                 <button
                   onClick={() => handleNativeShare(selectedArticle)}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#2B579A] dark:bg-[#6FA8DC] dark:text-[#1a1a1a] px-3.5 py-1.5 rounded shadow-sm hover:bg-[#1e3f73] dark:hover:bg-[#5a95c9] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
+                  className="flex items-center gap-1.5 text-[0.75em] font-semibold text-white bg-[#2B579A] dark:bg-[#6FA8DC] dark:text-[#1a1a1a] px-3.5 py-1.5 rounded shadow-sm hover:bg-[#1e3f73] dark:hover:bg-[#5a95c9] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.6" y1="10.5" x2="15.4" y2="6.5" /><line x1="8.6" y1="13.5" x2="15.4" y2="17.5" /></svg>
                   Share
@@ -295,16 +295,16 @@ export default function Projects({ data, initialArticleId }) {
 
               <div className="max-w-2xl space-y-4">
                 {selectedArticle.category && (
-                  <span className="inline-block bg-green-600 text-white text-[10px] font-bold uppercase tracking-wide px-3 py-1.5">
+                  <span className="inline-block bg-green-600 text-white text-[0.625em] font-bold uppercase tracking-wide px-3 py-1.5">
                     {selectedArticle.category}
                   </span>
                 )}
 
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white leading-snug">
+                <h1 className="text-[1.5em] sm:text-[1.875em] font-extrabold text-gray-900 dark:text-white leading-snug">
                   {selectedArticle.title}
                 </h1>
 
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400 font-mono">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.75em] text-gray-400 font-mono">
                   {selectedArticle.author && (
                     <>
                       <span>
@@ -331,8 +331,8 @@ export default function Projects({ data, initialArticleId }) {
                   </div>
                 )}
 
-                <div className="text-sm sm:text-base text-gray-700 dark:text-gray-300 leading-relaxed space-y-4 pt-1">
-                  <p className="font-medium text-base text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-[#252526] p-4 rounded border-l-4 border-green-600">
+                <div className="text-[0.875em] sm:text-[1em] text-gray-700 dark:text-gray-300 leading-relaxed space-y-4 pt-1">
+                  <p className="font-medium text-[1em] text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-[#252526] p-4 rounded border-l-4 border-green-600">
                     {selectedArticle.snippet}
                   </p>
                   {/* Isi artikel disimpan sebagai HTML (dari editor Bold/Italic/Underline/List/Link
@@ -350,170 +350,195 @@ export default function Projects({ data, initialArticleId }) {
         </div>
       )}
 
-      {/* ======================= MENU: GALLERY (Poster & Photo, gaya grid e-commerce) ======================= */}
-      {activeCategory === 'gallery' && (
+      {/* ======================= MENU: POSTER (dikelompokkan per Sub Bab) ======================= */}
+      {activeCategory === 'poster' && (
         <div className="space-y-6">
 
-          {/* Sub-menu Poster / Photo + toggle ukuran kartu */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex gap-2">
-              {[
-                { key: 'poster', label: 'Poster' },
-                { key: 'photo', label: 'Photo' },
-              ].map((tab) => (
+          {/* ---------- LAYAR 1: MENU PILIH SUB BAB ---------- */}
+          {!selectedSubBab && (
+            <div>
+              {subBabs.length === 0 ? (
+                <p className="text-[0.875em] text-gray-400 italic py-10 text-center">
+                  Belum ada sub bab poster yang ditambahkan.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {subBabs.map((sb) => (
+                    <button
+                      key={sb.id}
+                      type="button"
+                      data-hint-id={`projects-poster-subbab-${sb.id}`}
+                      onClick={() => setSelectedSubBabId(sb.id)}
+                      className="group flex flex-col items-center justify-center gap-2 h-32 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1e1e1e] hover:border-[#2B579A] dark:hover:border-[#6FA8DC] hover:shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
+                    >
+                      <span className="text-[0.9375em] font-bold text-gray-800 dark:text-gray-100 group-hover:text-[#2B579A] dark:group-hover:text-[#6FA8DC] transition-colors text-center px-2">
+                        {sb.name || 'Tanpa Nama'}
+                      </span>
+                      <span className="text-[0.6875em] font-mono text-gray-400 dark:text-gray-500">
+                        {(sb.items || []).length} poster
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ---------- LAYAR 2: GRID POSTER DI DALAM SUB BAB ---------- */}
+          {selectedSubBab && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between flex-wrap gap-3">
                 <button
-                  key={tab.key}
-                  data-hint-id={`projects-gallery-subtab-${tab.key}`}
-                  onClick={() => setGallerySubTab(tab.key)}
-                  className={`px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] ${
-                    gallerySubTab === tab.key
-                      ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
-                      : 'bg-transparent text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-400'
+                  onClick={() => setSelectedSubBabId(null)}
+                  className="flex items-center gap-1.5 text-[0.75em] font-mono text-gray-500 dark:text-gray-400 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] rounded"
+                >
+                  <span>←</span> Kembali ke Sub Bab
+                </button>
+
+                {activeGalleryItems.length > 0 && !selectedGalleryItem && (
+                  <div className="flex items-center gap-1 text-[0.6875em] font-mono text-gray-400">
+                    <span className="hidden sm:inline mr-1">Ukuran:</span>
+                    {[
+                      { key: 'nyaman', label: 'Besar' },
+                      { key: 'padat', label: 'Padat' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.key}
+                        onClick={() => setGridDensity(opt.key)}
+                        className={`px-2.5 py-1 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] ${
+                          gridDensity === opt.key
+                            ? 'bg-[#2B579A] dark:bg-[#6FA8DC] text-white dark:text-[#1a1a1a] border-[#2B579A] dark:border-[#6FA8DC]'
+                            : 'bg-transparent text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-400'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <h2 className="text-[1.25em] font-bold tracking-tight text-gray-900 dark:text-white -mt-2">
+                {selectedSubBab.name || 'Tanpa Nama'}
+              </h2>
+
+              {activeGalleryItems.length === 0 ? (
+                <p className="text-[0.875em] text-gray-400 italic py-10 text-center">
+                  Belum ada poster di sub bab ini.
+                </p>
+              ) : !selectedGalleryItem ? (
+                /* Masonry ala Pinterest — tinggi kartu ngikutin rasio gambar asli,
+                   bukan dipaksa seragam, jadi susunannya berantakan alami */
+                <div
+                  className={`gap-4 sm:gap-5 ${
+                    gridDensity === 'nyaman'
+                      ? 'columns-1 sm:columns-2 lg:columns-2 xl:columns-3'
+                      : 'columns-2 sm:columns-3 lg:columns-4'
                   }`}
                 >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {activeGalleryItems.length > 0 && (
-              <div className="flex items-center gap-1 text-[11px] font-mono text-gray-400">
-                <span className="hidden sm:inline mr-1">Ukuran:</span>
-                {[
-                  { key: 'nyaman', label: 'Besar' },
-                  { key: 'padat', label: 'Padat' },
-                ].map((opt) => (
+                  {activeGalleryItems.map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      onClick={() => setSelectedGalleryIndex(idx)}
+                      {...(item.hintEnabled !== false ? { 'data-hint-id': `projects-gallery-${item.id || idx}` } : {})}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedGalleryIndex(idx);
+                        }
+                      }}
+                      className="mb-4 sm:mb-5 break-inside-avoid cursor-pointer group rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
+                    >
+                      <div className="relative overflow-hidden rounded-md border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
+                        <img
+                          src={item.imageUrl}
+                          alt={item.title}
+                          loading="lazy"
+                          className="w-full h-auto block group-hover:scale-105 transition-transform duration-300"
+                        />
+                        {item.dimensions && (
+                          <span className="absolute top-2 left-2 text-[0.5625em] font-mono uppercase bg-white/90 dark:bg-black/70 text-gray-700 dark:text-gray-200 px-1.5 py-0.5 rounded">
+                            {item.dimensions}
+                          </span>
+                        )}
+                        {/* Overlay judul pas di-hover, khas kartu Pinterest */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
+                          <h3 className="text-white text-[0.875em] font-semibold leading-snug line-clamp-2">
+                            {item.title}
+                          </h3>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Detail — dibuka pas salah satu kartu di grid diklik */
+                <div className="space-y-6 view-reveal">
                   <button
-                    key={opt.key}
-                    onClick={() => setGridDensity(opt.key)}
-                    className={`px-2.5 py-1 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] ${
-                      gridDensity === opt.key
-                        ? 'bg-[#2B579A] dark:bg-[#6FA8DC] text-white dark:text-[#1a1a1a] border-[#2B579A] dark:border-[#6FA8DC]'
-                        : 'bg-transparent text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-400'
-                    }`}
+                    onClick={() => setSelectedGalleryIndex(null)}
+                    className="text-[0.75em] font-semibold text-gray-600 dark:text-gray-300 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] bg-gray-100 dark:bg-[#2d2d2d] px-3 py-1.5 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
                   >
-                    {opt.label}
+                    &larr; Kembali ke Poster
                   </button>
-                ))}
-              </div>
-            )}
-          </div>
 
-          {activeGalleryItems.length === 0 ? (
-            <p className="text-sm text-gray-400 italic py-10 text-center">
-              Belum ada {gallerySubTab === 'poster' ? 'poster' : 'foto'} yang ditambahkan.
-            </p>
-          ) : !selectedGalleryItem ? (
-            /* Masonry ala Pinterest — tinggi kartu ngikutin rasio gambar asli,
-               bukan dipaksa seragam, jadi susunannya berantakan alami */
-            <div
-              className={`gap-4 sm:gap-5 ${
-                gridDensity === 'nyaman'
-                  ? 'columns-1 sm:columns-2 lg:columns-2 xl:columns-3'
-                  : 'columns-2 sm:columns-3 lg:columns-4'
-              }`}
-            >
-              {activeGalleryItems.map((item, idx) => (
-                <div
-                  key={item.id || idx}
-                  onClick={() => setSelectedGalleryIndex(idx)}
-                  {...(item.hintEnabled !== false ? { 'data-hint-id': `projects-gallery-${item.id || idx}` } : {})}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelectedGalleryIndex(idx);
-                    }
-                  }}
-                  className="mb-4 sm:mb-5 break-inside-avoid cursor-pointer group rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
-                >
-                  <div className="relative overflow-hidden rounded-md border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
-                    <img
-                      src={item.imageUrl}
-                      alt={item.title}
-                      loading="lazy"
-                      className="w-full h-auto block group-hover:scale-105 transition-transform duration-300"
-                    />
-                    {item.dimensions && (
-                      <span className="absolute top-2 left-2 text-[9px] font-mono uppercase bg-white/90 dark:bg-black/70 text-gray-700 dark:text-gray-200 px-1.5 py-0.5 rounded">
-                        {item.dimensions}
-                      </span>
-                    )}
-                    {/* Overlay judul pas di-hover, khas kartu Pinterest */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-                      <h3 className="text-white text-sm font-semibold leading-snug line-clamp-2">
-                        {item.title}
-                      </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr] gap-6 md:gap-10 items-start">
+                    <div className="w-full rounded-md overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40 flex items-center justify-center">
+                      <img
+                        src={selectedGalleryItem.imageUrl}
+                        alt={selectedGalleryItem.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-auto max-h-[78vh] object-contain"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      {selectedGalleryItem.dimensions && (
+                        <span className="text-[0.625em] font-mono uppercase bg-[#2B579A]/10 dark:bg-[#6FA8DC]/15 text-[#2B579A] dark:text-[#6FA8DC] px-2 py-0.5 rounded border border-[#2B579A]/30 dark:border-[#6FA8DC]/30 inline-block">
+                          {selectedGalleryItem.dimensions}
+                        </span>
+                      )}
+                      {selectedGalleryItem.category && (
+                        <span className="text-[0.625em] font-mono uppercase text-gray-400 tracking-widest block">
+                          {selectedGalleryItem.category}
+                        </span>
+                      )}
+
+                      <h2 className="text-[1.25em] sm:text-[1.5em] font-bold text-gray-900 dark:text-white">
+                        {selectedGalleryItem.title}
+                      </h2>
+
+                      <p className="text-[0.875em] text-gray-600 dark:text-gray-300 leading-relaxed">
+                        {selectedGalleryItem.description}
+                      </p>
+
+                      {activeGalleryItems.length > 1 && (
+                        <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                          <span className="text-[0.75em] font-mono text-gray-400">
+                            Poster {selectedGalleryIndex + 1} dari {activeGalleryItems.length}
+                          </span>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={prevGalleryItem}
+                              className="px-3 py-1.5 bg-gray-100 dark:bg-[#2d2d2d] hover:bg-gray-200 dark:hover:bg-[#383838] text-[0.75em] font-semibold rounded text-gray-800 dark:text-gray-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
+                            >
+                              &larr; Prev
+                            </button>
+                            <button
+                              onClick={nextGalleryItem}
+                              className="px-3 py-1.5 bg-[#2B579A] hover:bg-[#1e3f73] dark:bg-[#6FA8DC] dark:hover:bg-[#5a95c9] text-[0.75em] font-semibold rounded text-white dark:text-[#1a1a1a] shadow transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
+                            >
+                              Next &rarr;
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            /* Detail — dibuka pas salah satu kartu di grid diklik */
-            <div className="space-y-6 view-reveal">
-              <button
-                onClick={() => setSelectedGalleryIndex(null)}
-                className="text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] bg-gray-100 dark:bg-[#2d2d2d] px-3 py-1.5 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
-              >
-                &larr; Kembali ke {gallerySubTab === 'poster' ? 'Poster' : 'Photo'}
-              </button>
-
-              <div className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr] gap-6 md:gap-10 items-start">
-                <div className="w-full rounded-md overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40 flex items-center justify-center">
-                  <img
-                    src={selectedGalleryItem.imageUrl}
-                    alt={selectedGalleryItem.title}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-auto max-h-[78vh] object-contain"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  {selectedGalleryItem.dimensions && (
-                    <span className="text-[10px] font-mono uppercase bg-[#2B579A]/10 dark:bg-[#6FA8DC]/15 text-[#2B579A] dark:text-[#6FA8DC] px-2 py-0.5 rounded border border-[#2B579A]/30 dark:border-[#6FA8DC]/30 inline-block">
-                      {selectedGalleryItem.dimensions}
-                    </span>
-                  )}
-                  {selectedGalleryItem.category && (
-                    <span className="text-[10px] font-mono uppercase text-gray-400 tracking-widest block">
-                      {selectedGalleryItem.category}
-                    </span>
-                  )}
-
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {selectedGalleryItem.title}
-                  </h2>
-
-                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                    {selectedGalleryItem.description}
-                  </p>
-
-                  {activeGalleryItems.length > 1 && (
-                    <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                      <span className="text-xs font-mono text-gray-400">
-                        {gallerySubTab === 'poster' ? 'Poster' : 'Foto'} {selectedGalleryIndex + 1} dari {activeGalleryItems.length}
-                      </span>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={prevGalleryItem}
-                          className="px-3 py-1.5 bg-gray-100 dark:bg-[#2d2d2d] hover:bg-gray-200 dark:hover:bg-[#383838] text-xs font-semibold rounded text-gray-800 dark:text-gray-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
-                        >
-                          &larr; Prev
-                        </button>
-                        <button
-                          onClick={nextGalleryItem}
-                          className="px-3 py-1.5 bg-[#2B579A] hover:bg-[#1e3f73] dark:bg-[#6FA8DC] dark:hover:bg-[#5a95c9] text-xs font-semibold rounded text-white dark:text-[#1a1a1a] shadow transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
-                        >
-                          Next &rarr;
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+              )}
             </div>
           )}
         </div>
@@ -549,18 +574,18 @@ export default function Projects({ data, initialArticleId }) {
               </button>
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                 {shareArticle.category && (
-                  <span className="inline-block bg-green-600 text-white text-[9px] font-bold uppercase tracking-wide px-2 py-1 mb-1.5">
+                  <span className="inline-block bg-green-600 text-white text-[0.5625em] font-bold uppercase tracking-wide px-2 py-1 mb-1.5">
                     {shareArticle.category}
                   </span>
                 )}
-                <h3 className="text-white text-sm font-bold leading-snug line-clamp-2">
+                <h3 className="text-white text-[0.875em] font-bold leading-snug line-clamp-2">
                   {shareArticle.title}
                 </h3>
               </div>
             </div>
 
             <div className="p-4 space-y-3">
-              <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{shareArticle.snippet}</p>
+              <p className="text-[0.75em] text-gray-500 dark:text-gray-400 line-clamp-2">{shareArticle.snippet}</p>
 
               {/* Tombol platform share */}
               <div className="grid grid-cols-4 gap-2">
@@ -601,7 +626,7 @@ export default function Projects({ data, initialArticleId }) {
                     <span className={`w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform ${p.bg}`}>
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">{p.icon}</svg>
                     </span>
-                    <span className="text-[9px] text-gray-500 dark:text-gray-400">{p.name}</span>
+                    <span className="text-[0.5625em] text-gray-500 dark:text-gray-400">{p.name}</span>
                   </a>
                 ))}
               </div>
@@ -613,11 +638,11 @@ export default function Projects({ data, initialArticleId }) {
                   readOnly
                   value={buildShareUrl(shareArticle)}
                   onFocus={(e) => e.target.select()}
-                  className="flex-1 text-[10px] font-mono px-2.5 py-2 bg-gray-50 dark:bg-[#2d2d2d] border border-gray-200 dark:border-gray-700 rounded text-gray-500 dark:text-gray-400 truncate"
+                  className="flex-1 text-[0.625em] font-mono px-2.5 py-2 bg-gray-50 dark:bg-[#2d2d2d] border border-gray-200 dark:border-gray-700 rounded text-gray-500 dark:text-gray-400 truncate"
                 />
                 <button
                   onClick={() => handleCopyLink(shareArticle)}
-                  className="shrink-0 text-[11px] font-semibold px-3 py-2 rounded bg-gray-800 dark:bg-white text-white dark:text-gray-900 hover:opacity-90 transition-opacity"
+                  className="shrink-0 text-[0.6875em] font-semibold px-3 py-2 rounded bg-gray-800 dark:bg-white text-white dark:text-gray-900 hover:opacity-90 transition-opacity"
                 >
                   {linkCopied ? 'Disalin!' : 'Salin'}
                 </button>

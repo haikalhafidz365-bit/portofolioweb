@@ -6,7 +6,13 @@ export const initialPortfolioData = {
     name: "[Nama Lengkap Lo]",
     role: "Frontend Developer & Tech Enthusiast",
     bio: "Berfokus pada pembuatan antarmuka digital yang bersih, fungsional, dan interaktif.",
-    photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80"
+    // Foto buat LIGHT mode: B&W, background terang, lighting di muka udah
+    // baked-in di file fotonya (bukan hasil filter CSS).
+    photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+    // Foto buat DARK mode: warna asli, background gelap, lighting di muka
+    // juga udah baked-in. Kalau dikosongin, otomatis fallback pakai
+    // `photoUrl` yang sama (lihat Home.jsx).
+    photoUrlDark: ""
   },
 
   // 2. ABOUT DATA
@@ -130,12 +136,15 @@ export const initialPortfolioData = {
   },
 
 
-  // 5. PROJECTS & WORKS DATA (Articles gaya portal berita + Gallery: Poster & Photo)
+  // 5. PROJECTS & WORKS DATA (Articles gaya portal berita + Poster yang dikelompokkan per Sub Bab)
   // heading & subheading = judul + keterangan singkat di halaman Projects (bisa diedit lewat CMS)
   // articles[0] otomatis jadi artikel unggulan (tampil besar), sisanya jadi daftar kecil di sampingnya
+  // poster.subBabs = daftar "folder" poster (mis. "UI/UX", "Branding", dst) yang bisa
+  // ditambah/dihapus bebas lewat CMS (tombol "+ Tambah Sub Bab") — tiap sub bab punya
+  // nama sendiri + daftar item poster-nya sendiri.
   projects: {
     heading: 'Projects, Articles & Visuals',
-    subheading: 'Kumpulan karya tulis artikel bergaya portal berita dan galeri visual pilihan.',
+    subheading: 'Kumpulan karya tulis artikel bergaya portal berita dan galeri poster pilihan.',
     articles: [
       {
         id: 'art-1',
@@ -149,19 +158,24 @@ export const initialPortfolioData = {
         image: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=800&q=80'
       }
     ],
-    gallery: {
-      poster: [
+    poster: {
+      subBabs: [
         {
-          id: 'pos-1',
-          hintEnabled: true,
-          title: 'Desain UI System Dashboard Admin',
-          category: 'UI/UX Design',
-          dimensions: '',
-          imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80',
-          description: 'Eksplorasi tata letak panel kontrol modern bernuansa minimalis-clean.'
+          id: 'subbab-1',
+          name: 'UI/UX Design',
+          items: [
+            {
+              id: 'pos-1',
+              hintEnabled: true,
+              title: 'Desain UI System Dashboard Admin',
+              category: 'UI/UX Design',
+              dimensions: '',
+              imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80',
+              description: 'Eksplorasi tata letak panel kontrol modern bernuansa minimalis-clean.'
+            }
+          ]
         }
-      ],
-      photo: []
+      ]
     }
   },
 
@@ -186,36 +200,25 @@ export const initialPortfolioData = {
     ]
   },
 
-  // 7. PATROL — SUDAH GAK DIPAKAI LAGI oleh halaman publik (App.jsx gak baca field ini
-  // sama sekali sekarang). Dulu ini teks guidance/hint statis satu-per-tab yang muncul
-  // lewat komponen GuidanceNote. Sekarang diganti sistem baru: HintToggle (tombol pojok
-  // kiri atas) + attribute `data-hint-id` langsung di elemen interaktif tiap halaman
-  // (lihat `hintEnabled` di item Career sbg contoh pertama). Data & UI CMS tab "Patrol"
-  // di bawah ini SENGAJA belum dihapus dulu (biar gak hilang data lama & CmsDashboard
-  // gak perlu dirombak buru-buru) — tapi sekarang cuma "nganggur", gak ngefek ke visitor.
-  // Bisa dihapus total dari sini + CmsDashboard.jsx begitu rollout hint ke semua tab kelar.
-  patrol: {
-    heading: 'Guidance / Hint',
-    Home: 'Halo! Ini halaman awal. Geser ke tab lain di Ribbon atas buat lihat About, Career, Book, Projects, sampai Contact.',
-    About: 'Di sini cerita singkat soal keseharian & keseharian saya — Live, Life, sama Laugh.',
-    Career: 'Klik salah satu kartu (School / College / Professional) buat lihat detail riwayatnya.',
-    Book: 'Klik salah satu buku di rak buat baca detail lengkapnya.',
-    Projects: 'Artikel unggulan ada di kiri, galeri poster & foto ada di bawahnya — klik buat lihat lebih detail.',
-    Contact: 'Mau kolaborasi atau sekadar nyapa? Klik tombol di bawah atau kirim email langsung.'
-  },
-
-  // 9. ODDS — serpihan/cuplikan tulisan pendek yang dipakai sebagai aksen latar
+  // 7. ODDS — serpihan/cuplikan tulisan pendek yang dipakai sebagai aksen latar
   // (bertebaran halus di belakang konten, di SEMUA tab sekaligus). Diedit sekali di
   // CMS, otomatis kepake di mana-mana. Array of strings — satu string = satu serpihan.
   odds: [],
 
-  // 10. QUOTES — kutipan-kutipan pendek yang tampil di balon komentar berjalan (nempel
+  // 8. QUOTES — kutipan-kutipan pendek yang tampil di balon komentar berjalan (nempel
   // di tepi kanan layar, jalan ke atas terus-menerus/loop). SENGAJA dipisah dari `odds`
   // di atas: odds itu buat tekstur latar yang acak & banyak, sedangkan quotes ini buat
   // kalimat yang beneran "berdiri sendiri" sebagai kutipan yang kebaca jelas. Diedit
   // sekali di CMS (tab terpisah dari Odds), otomatis kepake di semua tab. Array of
   // strings — satu string = satu kutipan.
-  // 11. GENERAL — pengaturan situs secara keseluruhan (bukan punya satu halaman tertentu).
+  // WAJIB ada di sini (jangan dihapus lagi kalau nanti dirapiin) — App.jsx nge-baca
+  // `portfolioData.quotes` langsung buat CommentTicker. Kalau field ini hilang dari
+  // initialPortfolioData, begitu Supabase kosong/baru setup, CommentTicker bakal dapet
+  // `undefined` bukan array kosong (baru dijaga pas mode CMS/edit doang, bukan pas
+  // ditampilin ke publik) — makanya defaultnya WAJIB array kosong, bukan gak ada sama sekali.
+  quotes: [],
+
+  // 9. GENERAL — pengaturan situs secara keseluruhan (bukan punya satu halaman tertentu).
   // Baru ada 1 fitur di sini: notifikasi welcome yang nyambut pengunjung pas pertama buka web.
   general: {
     welcomeNotification: {

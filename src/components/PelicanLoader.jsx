@@ -7,51 +7,71 @@
 // Dua elemen animasinya independen:
 //  1. Sayap pelikan — flap naik-turun terus-menerus (CSS keyframes, murni CSS
 //     jadi ringan, ga butuh library animasi tambahan).
-//  2. Teks di bawah — efek "diketik" (typing effect), ngetik lalu ngapus lalu
-//     ngetik lagi secara loop, biar kerasa hidup walau loading-nya kebetulan
-//     sebentar aja.
+//  2. Teks di bawah — efek "diketik" (typing effect), ngetik SEKALI (gak loop
+//     ngapus-ngetik-ulang lagi kayak sebelumnya), lalu diem/hold beberapa detik
+//     abis full keketik, BARU manggil `onFinished` — App.jsx nunggu callback
+//     ini (digabung sama status fetch data) sebelum masuk ke web-nya, jadi
+//     pesannya kejamin kebaca dulu, gak keburu ke-skip.
 
 import React, { useState, useEffect } from 'react';
 
-// Hook kecil buat efek ketik: ngetik teks huruf demi huruf, jeda sebentar pas
-// full, lalu ngapus huruf demi huruf, jeda sebentar pas kosong, lalu ulang.
-function useTypingLoop(text, { typeSpeed = 85, deleteSpeed = 45, holdFull = 1100, holdEmpty = 400 } = {}) {
+// Hook kecil buat efek ketik SEKALI JALAN: ngetik teks huruf demi huruf, lalu
+// begitu full, nunggu `holdAfterMs` (jeda baca) sebelum manggil `onDone`.
+// Semua timeout-nya dicatat & di-clear pas unmount, biar gak ada callback
+// nyangkut yang manggil state udah gak ada komponennya lagi.
+function useTypeOnce(text, { typeSpeed = 85, holdAfterMs = 2500, onDone } = {}) {
   const [display, setDisplay] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
+    const timeoutIds = [];
     let i = 0;
-    let deleting = false;
-    let timeoutId;
 
-    const tick = () => {
-      if (!deleting) {
+    const typeNextChar = () => {
+      const id = setTimeout(() => {
+        if (cancelled) return;
         i += 1;
         setDisplay(text.slice(0, i));
+
         if (i >= text.length) {
-          timeoutId = setTimeout(() => { deleting = true; tick(); }, holdFull);
+          // Kalimatnya udah full keketik — tunggu holdAfterMs dulu (biar sempet
+          // kebaca), baru kasih tau parent-nya kalau splash-nya udah "selesai".
+          const holdId = setTimeout(() => {
+            if (!cancelled) onDone?.();
+          }, holdAfterMs);
+          timeoutIds.push(holdId);
           return;
         }
-        timeoutId = setTimeout(tick, typeSpeed);
-      } else {
-        i -= 1;
-        setDisplay(text.slice(0, i));
-        if (i <= 0) {
-          timeoutId = setTimeout(() => { deleting = false; tick(); }, holdEmpty);
-          return;
-        }
-        timeoutId = setTimeout(tick, deleteSpeed);
-      }
+
+        typeNextChar();
+      }, typeSpeed);
+      timeoutIds.push(id);
     };
 
-    timeoutId = setTimeout(tick, typeSpeed);
-    return () => clearTimeout(timeoutId);
-  }, [text, typeSpeed, deleteSpeed, holdFull, holdEmpty]);
+    typeNextChar();
+
+    return () => {
+      cancelled = true;
+      timeoutIds.forEach(clearTimeout);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, typeSpeed, holdAfterMs]);
 
   return display;
 }
 
-export default function PelicanLoader({ text = 'Memuat portofolio...' }) {
-  const typedText = useTypingLoop(text);
+export default function PelicanLoader({
+  text = 'Use laptop or tablet for a full experience',
+  // Jeda (ms) SETELAH kalimat full keketik, sebelum `onFinished` dipanggil.
+  // Ini yang bikin ada waktu "diem sebentar" buat baca pesannya sebelum App.jsx
+  // ngelanjutin masuk ke web.
+  holdAfterMs = 2500,
+  // Dipanggil App.jsx pas splash ini dianggap "selesai tampil" (ketikan penuh +
+  // holdAfterMs kelewat). App.jsx nunggu ini DIGABUNG sama status fetch data
+  // sebelum bener-bener nyembunyiin layar loading.
+  onFinished,
+}) {
+  const typedText = useTypeOnce(text, { holdAfterMs, onDone: onFinished });
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#2b579a] px-4">

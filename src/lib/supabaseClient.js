@@ -20,4 +20,4 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Nama bucket Storage tempat naro foto upload dari CMS (foto profil, dll).
 // Harus PERSIS sama dengan nama bucket yang lo bikin di dashboard Supabase.
-export const IMAGES_BUCKET = 'portfolio-images';
+export const IMAGES_BUCKET = 'portofolio-images';

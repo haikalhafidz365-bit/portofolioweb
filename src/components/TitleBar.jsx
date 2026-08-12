@@ -3,7 +3,9 @@ import React from 'react';
 export default function TitleBar({
   isAdminMode, setIsAdminMode,
   darkMode, setDarkMode,
-  onSave
+  isFullscreen, onToggleFullscreen,
+  onSave,
+  activeTab
 }) {
   return (
     <div className="bg-[#2b579a] dark:bg-[#1e1e1e] text-white flex justify-between items-center px-2 sm:px-3 py-1.5 text-xs select-none transition-colors duration-200 border-b border-black/10">
@@ -38,9 +40,12 @@ export default function TitleBar({
 
       {/* BAGIAN KANAN: Mode Toggle & Tombol Admin Only */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-        {/* Tombol Toggle Light / Dark Mode — di layar sempit cuma nampilin ikon, teksnya disembunyiin */}
+        {/* Tombol Toggle Light / Dark Mode — di layar sempit cuma nampilin ikon, teksnya disembunyiin.
+            data-hint-id cuma dipasang pas activeTab === 'Home' (lihat App.jsx: HintToggle & CSS
+            .hint-mode-active), biar mode Hint di luar A4 sengaja dibatasin ke tab Home doang. */}
         <button 
           onClick={() => setDarkMode(!darkMode)}
+          data-hint-id={activeTab === 'Home' ? 'titlebar-dark-mode' : undefined}
           className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded text-[11px] transition-all cursor-pointer"
         >
           {darkMode ? (
@@ -52,6 +57,28 @@ export default function TitleBar({
             <>
               <svg className="w-3.5 h-3.5 text-gray-200" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
               <span className="hidden sm:inline">Dark Mode</span>
+            </>
+          )}
+        </button>
+
+        {/* Tombol Toggle Full Screen — expand seluruh web (title bar, ribbon, dokumen,
+            status bar) pake Fullscreen API browser (logic-nya di App.jsx, dikirim ke
+            sini lewat props isFullscreen & onToggleFullscreen). Sama kayak tombol Dark
+            Mode: di layar sempit cuma nampilin ikon, teksnya disembunyiin. */}
+        <button
+          onClick={onToggleFullscreen}
+          className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded text-[11px] transition-all cursor-pointer"
+          title={isFullscreen ? 'Keluar dari Full Screen' : 'Full Screen'}
+        >
+          {isFullscreen ? (
+            <>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 3v3a2 2 0 01-2 2H4M15 3v3a2 2 0 002 2h3M9 21v-3a2 2 0 00-2-2H4M15 21v-3a2 2 0 012-2h3"></path></svg>
+              <span className="hidden sm:inline">Exit Full Screen</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 8V5a1 1 0 011-1h3M20 8V5a1 1 0 00-1-1h-3M4 16v3a1 1 0 001 1h3M20 16v3a1 1 0 01-1 1h-3"></path></svg>
+              <span className="hidden sm:inline">Full Screen</span>
             </>
           )}
         </button>

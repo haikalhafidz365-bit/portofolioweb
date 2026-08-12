@@ -40,10 +40,12 @@ function countWords(value) {
   return 0;
 }
 
-// Password buat masuk Admin Only — ganti ke password lo sendiri, mang!
-// (Catatan: ini proteksi sisi client doang, cukup buat nyegah orang iseng klik-klik.
-//  Bukan security beneran karena siapapun bisa lihat ini kalau buka source code JS-nya.)
-const ADMIN_PASSWORD = 'mangkukbesar';
+// GANTI ke email akun admin yang lo bikin di Supabase Auth (Dashboard → Authentication →
+// Users → Add user). Password-nya SUDAH GAK ADA lagi di file ini — proteksinya sekarang
+// beneran divalidasi di server oleh Supabase Auth + Row Level Security di tabel
+// `portfolio`, bukan cuma dicocokin string di JS kayak sebelumnya (yang gampang dibaca
+// siapa aja dari bundle JS via DevTools).
+const ADMIN_EMAIL = 'haikalhafidz365@gmail.com';
 
 // Skala dasar tampilan dokumen KHUSUS DESKTOP — ini "zoom out by system" yang diminta,
 // TERPISAH dari slider zoom manual di StatusBar/Ruler (itu tetep nunjuk 50-200%, defaultnya 100%).
@@ -53,14 +55,21 @@ const ADMIN_PASSWORD = 'mangkukbesar';
 // tampilan HP berantakan.
 const BASE_VIEW_SCALE = 0.9;
 
-// Ukuran pt "netral" yang jadi acuan skala 100% — dipilih 12pt karena itu default fontSize.
-// Kenapa perlu ini: SEMUA teks di halaman-halaman lo (Home/About/Career/dst) pakai ukuran
-// dari class Tailwind (text-sm, text-2xl, dst) yang satuannya "rem" — dan rem itu SELALU
-// ngikutin ukuran font di <html> root, bukan elemen pembungkus terdekat manapun. Makanya,
-// nyetel fontSize cuma lewat inline style di pembungkus dokumen TIDAK BISA nembus ke situ.
-// Solusinya: ukuran pt dari Ribbon diterjemahin jadi faktor skala visual (mirip cara kerja
-// Zoom), lalu digabung ke transform scale yang sama di bawah. Jadi milih ukuran font lebih
-// besar/kecil di Ribbon beneran keliatan efeknya di seluruh isi dokumen — termasuk di Home.
+// Ukuran pt default fontSize (dipakai sebagai nilai awal state `fontSize`, BUKAN lagi
+// dipakai buat itung faktor scale/zoom — lihat catatan di bawah).
+//
+// CATATAN SEJARAH (biar gak keulang lagi kalau ada yang nyoba "benerin" ini balik lagi):
+// Dulu nilai pt dari Ribbon diterjemahin jadi faktor `transform: scale(...)` yang digabung
+// ke transform zoom di bawah. Itu SALAH — efeknya beneran cuma kayak nge-zoom seluruh
+// kertas (gambar, spacing, border ikut membesar/mengecil semua), BUKAN beneran ngubah
+// ukuran huruf doang. Sekarang pendekatannya: fontSize dipasang murni lewat inline style
+// `fontSize: ${fontSize}pt` di pembungkus dokumen, dan supaya itu beneran nembus ke teks
+// di dalam Home/About/Career/dst, semua class ukuran teks Tailwind di halaman-halaman itu
+// udah dikonversi dari `rem` (text-sm, text-2xl, dst — yang SELALU ngikut <html> root, gak
+// peduli pembungkusnya) ke `em` arbitrary value (text-[0.875em], dst — yang ngikut font-size
+// elemen pembungkus terdekat). Jadi sekarang: geser slider font size = teks membesar &
+// reflow, layout/gambar/lebar kertas tetep. Geser slider Zoom (Ruler) = baru itu yang
+// beneran scale seluruh kertas.
 const FONT_SIZE_BASELINE_PT = 12;
 
 // Breakpoint bawah dari sini dianggap "HP" — dipakai buat matiin efek kertas Word,
@@ -70,11 +79,57 @@ const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)';
 // ID baris tetap di tabel `portfolio` — kita cuma pakai 1 baris yang terus di-update.
 const PORTFOLIO_ROW_ID = 1;
 
+// Default & jaring pengaman buat field `general` — SAMA PERSIS kayak yang ada di
+// CmsDashboard.jsx (DEFAULT_GENERAL / normalizeGeneral di sana). Ini WAJIB
+// dipasang juga di sini (bukan cuma di form edit CMS-nya), soalnya kalau baris di
+// Supabase belum punya field `general` sama sekali (mis. data lama dari sebelum
+// field ini ditambahin), tanpa normalisasi ini `portfolioData.general` bakal
+// `undefined` → WelcomeToast nganggep `enabled` juga `undefined` (falsy) → notif
+// welcome-nya gak pernah muncul di halaman publik, PADAHAL di CMS Dashboard
+// toggle-nya keliatan "Aktif" (karena normalisasi versi CmsDashboard cuma dipakai
+// buat form edit-nya doang, gak nembus ke sini).
+const DEFAULT_GENERAL = {
+  welcomeNotification: {
+    enabled: true,
+    title: 'Selamat datang! 👋',
+    message: 'Terima kasih udah mampir ke portofolio saya. Semoga betah!',
+    delaySeconds: 2,
+  },
+};
+const normalizeGeneral = (raw) => ({
+  welcomeNotification: {
+    ...DEFAULT_GENERAL.welcomeNotification,
+    ...(raw?.welcomeNotification || {}),
+  },
+});
+
+// Jaring pengaman yang sama buat `quotes` — dulu field ini gak ada sama sekali di
+// initialPortfolioData, jadi kalau baris Supabase belum/gak punya field `quotes`,
+// portfolioData.quotes bakal `undefined` (bukan array kosong) begitu dilempar ke
+// CommentTicker. Sekarang initialPortfolioData udah dikasih `quotes: []` juga (lihat
+// CmsData.js), tapi normalisasi di sini WAJIB tetep dipasang buat baris data LAMA di
+// Supabase yang udah kesave dari sebelum field ini ditambahin.
+const normalizeQuotes = (raw) => (Array.isArray(raw) ? raw : []);
+
 export default function App() {
   const [portfolioData, setPortfolioData] = useState(initialPortfolioData);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [saveError, setSaveError] = useState(null);
+
+  // Dua syarat yang HARUS dua-duanya kepenuhin sebelum layar loading (PelicanLoader)
+  // ditutup: (1) data dari Supabase udah kelar diambil, (2) pesan di splash-nya
+  // udah kelar diketik + jeda baca-nya (lihat prop `holdAfterMs` di PelicanLoader)
+  // udah kelewat. Jadi walau fetch-nya kenceng banget, tetep nunggu pesannya
+  // "tersampaikan" dulu — dan walau fetch-nya lambat, teksnya juga gak keburu
+  // hilang sebelum data selesai disiapin.
+  const [isDataReady, setIsDataReady] = useState(false);
+  const [isSplashDone, setIsSplashDone] = useState(false);
+  useEffect(() => {
+    if (isDataReady && isSplashDone) {
+      setIsLoading(false);
+    }
+  }, [isDataReady, isSplashDone]);
 
   // Ambil data dari Supabase sekali pas app pertama kali dibuka.
   // Ini yang bikin data konsisten di semua device/browser/akun — bukan lagi localStorage.
@@ -82,28 +137,50 @@ export default function App() {
     let ignore = false;
 
     async function loadPortfolioData() {
-      const { data, error } = await supabase
-        .from('portfolio')
-        .select('data')
-        .eq('id', PORTFOLIO_ROW_ID)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('portfolio')
+          .select('data')
+          .eq('id', PORTFOLIO_ROW_ID)
+          .single();
 
-      if (ignore) return;
+        if (ignore) return;
 
-      if (error) {
-        console.error('Gagal ambil data dari Supabase:', error);
+        if (error) {
+          console.error('Gagal ambil data dari Supabase:', error);
+          setLoadError(
+            'Gagal konek ke server. Pastikan .env sudah diisi & tabel "portfolio" sudah dibikin. ' +
+            'Sementara nampilin data default.'
+          );
+          setPortfolioData(initialPortfolioData);
+        } else if (data?.data && Object.keys(data.data).length > 0) {
+          setPortfolioData({
+            ...data.data,
+            general: normalizeGeneral(data.data.general),
+            quotes: normalizeQuotes(data.data.quotes),
+          });
+        } else {
+          // Baris ada tapi masih kosong (baru setup) → pakai default template.
+          setPortfolioData(initialPortfolioData);
+        }
+      } catch (err) {
+        // Beda dari `error` di atas (yang di-return rapi sama Supabase) — ini nangkep
+        // kegagalan yang beneran nge-throw (mis. .env belum keisi/salah, client gagal
+        // ke-init, network putus total). TANPA try/catch ini, exception di atas bakal
+        // ngehentiin fungsi ini di tengah jalan SEBELUM sempet manggil setIsDataReady,
+        // yang bikin isLoading nyangkut `true` selamanya — splash loading gak akan
+        // pernah ketutup, dan semua yang di bawahnya (termasuk WelcomeToast) gak akan
+        // pernah sempet dirender sama sekali.
+        if (ignore) return;
+        console.error('Gagal ambil data dari Supabase (exception):', err);
         setLoadError(
           'Gagal konek ke server. Pastikan .env sudah diisi & tabel "portfolio" sudah dibikin. ' +
           'Sementara nampilin data default.'
         );
         setPortfolioData(initialPortfolioData);
-      } else if (data?.data && Object.keys(data.data).length > 0) {
-        setPortfolioData(data.data);
-      } else {
-        // Baris ada tapi masih kosong (baru setup) → pakai default template.
-        setPortfolioData(initialPortfolioData);
+      } finally {
+        if (!ignore) setIsDataReady(true);
       }
-      setIsLoading(false);
     }
 
     loadPortfolioData();
@@ -162,9 +239,66 @@ export default function App() {
 
   const [darkMode, setDarkMode] = useState(false);
   const [isAdminMode, setIsAdminModeRaw] = useState(false);
-  const [isAdminAuthed, setIsAdminAuthed] = useState(
-    () => sessionStorage.getItem('cms_admin_authed') === 'true'
+
+  // Status login admin SEKARANG ngikutin session Supabase Auth yang beneran (JWT
+  // tervalidasi server), BUKAN lagi sessionStorage flag polos yang dulu ada di sini.
+  // Dulu itu gampang di-bypass: buka console browser, ketik
+  // `sessionStorage.setItem('cms_admin_authed', 'true')`, refresh — langsung masuk
+  // admin tanpa password sama sekali, karena "otentikasi"-nya cuma nge-cek string di
+  // JS. Supabase-js otomatis nyimpen & nge-refresh session-nya sendiri (di
+  // localStorage), jadi di sini kita tinggal DENGERIN status-nya, gak perlu ngatur
+  // penyimpanannya manual lagi.
+  const [isAdminAuthed, setIsAdminAuthed] = useState(false);
+  useEffect(() => {
+    let ignore = false;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!ignore) setIsAdminAuthed(!!session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAdminAuthed(!!session);
+    });
+
+    return () => {
+      ignore = true;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Mode "Full Screen" — dipanggil dari tombol di TitleBar. Pakai Fullscreen API bawaan
+  // browser (bikin seluruh tab expand nutupin address bar dkk), BUKAN cuma gede-gedein
+  // elemen di CSS doang. `isFullscreen` disinkronin ke event `fullscreenchange` juga
+  // (bukan cuma di-set manual pas klik tombol), soalnya user bisa keluar full screen
+  // lewat cara lain di luar tombol kita (misal pencet Esc, atau klik UI browser) — kalau
+  // gak disinkronin, status tombol bisa "nyangkut" gak sesuai kenyataan.
+  const [isFullscreen, setIsFullscreen] = useState(
+    () => typeof document !== 'undefined' && !!document.fullscreenElement
   );
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        // documentElement dipilih (bukan cuma div kertas) biar TitleBar/Ribbon/StatusBar
+        // ikut kepake pas full screen, bukan cuma kontennya doang.
+        await document.documentElement.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      // Beberapa browser/situasi (mis. iframe tanpa izin, atau browser lawas yang gak
+      // dukung Fullscreen API) bisa nolak request-nya — diamkan aja, tombolnya tetep
+      // ada tapi gak ngefek, daripada bikin app crash.
+      console.warn('Full screen tidak didukung atau ditolak:', err);
+    }
+  };
 
   // Mode "Hint" — toggle dari tombol HintToggle di pojok kiri atas. Pas true, semua
   // elemen `data-hint-id` di tab yang lagi kebuka ikutan blink (lihat class
@@ -200,11 +334,12 @@ export default function App() {
   }, []);
 
   // Dipanggil kapanpun mau KELUAR dari admin mode (Exit Admin, Save, atau Cancel) —
-  // status login-nya ikut direset, jadi lain kali mau masuk admin lagi wajib password ulang.
+  // signOut Supabase Auth beneran (bukan cuma hapus flag lokal), jadi session/token-nya
+  // beneran diinvalidasi. isAdminAuthed otomatis ke-update ke false lewat listener
+  // onAuthStateChange di atas — gak perlu di-set manual di sini.
   const exitAdminMode = () => {
     setIsAdminModeRaw(false);
-    setIsAdminAuthed(false);
-    sessionStorage.removeItem('cms_admin_authed');
+    supabase.auth.signOut();
   };
 
   // Dipanggil dari tombol "Admin Only" di TitleBar. Kalau mau MASUK admin mode dan
@@ -214,6 +349,7 @@ export default function App() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordWrong, setPasswordWrong] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const handleSetIsAdminMode = (wantsAdmin) => {
     if (!wantsAdmin) {
@@ -230,16 +366,26 @@ export default function App() {
     setShowPasswordModal(true);
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    if (passwordInput === ADMIN_PASSWORD) {
-      setIsAdminAuthed(true);
-      sessionStorage.setItem('cms_admin_authed', 'true');
+    setIsSigningIn(true);
+    // Login beneran ke Supabase Auth — server yang validasi password-nya, bukan JS
+    // di browser lagi. `data.data.session` yang dihasilkan ini yang nantinya dipake
+    // sama Row Level Security di tabel `portfolio` buat ngizinin/nolak UPDATE.
+    const { error } = await supabase.auth.signInWithPassword({
+      email: ADMIN_EMAIL,
+      password: passwordInput,
+    });
+    setIsSigningIn(false);
+
+    if (!error) {
+      // isAdminAuthed ke-update otomatis lewat listener onAuthStateChange di atas.
       setIsAdminModeRaw(true);
       setShowPasswordModal(false);
       setPasswordInput('');
       alert('ada yang bisa dibanting di sini?');
     } else {
+      console.error('Login admin gagal:', error.message);
       setPasswordWrong(true);
       setPasswordInput('');
     }
@@ -261,7 +407,7 @@ export default function App() {
 
   // State Editor Word
   const [fontFamily, setFontFamily] = useState('Garamond');
-  const [fontSize, setFontSize] = useState(12);
+  const [fontSize, setFontSize] = useState(FONT_SIZE_BASELINE_PT);
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
@@ -282,7 +428,7 @@ export default function App() {
   // Sementara data masih di-fetch dari Supabase, tampilin loading simpel
   // biar gak kelihatan "flash" dari data default ke data asli.
   if (isLoading) {
-    return <PelicanLoader />;
+    return <PelicanLoader onFinished={() => setIsSplashDone(true)} />;
   }
 
   const documentBody = (
@@ -323,7 +469,8 @@ export default function App() {
                 value={passwordInput}
                 onChange={(e) => { setPasswordInput(e.target.value); setPasswordWrong(false); }}
                 placeholder="Password"
-                className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#2d2d2d] border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-[#2b579a]"
+                disabled={isSigningIn}
+                className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#2d2d2d] border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-[#2b579a] disabled:opacity-60"
               />
               {passwordWrong && (
                 <p className="text-xs text-red-500 font-medium">Password salah, mang.</p>
@@ -332,15 +479,17 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handlePasswordCancel}
-                  className="px-3 py-1.5 text-xs font-semibold rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors"
+                  disabled={isSigningIn}
+                  className="px-3 py-1.5 text-xs font-semibold rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors disabled:opacity-60"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded bg-[#2b579a] hover:bg-[#1e3f73] text-white shadow transition-colors"
+                  disabled={isSigningIn}
+                  className="px-3.5 py-1.5 text-xs font-semibold rounded bg-[#2b579a] hover:bg-[#1e3f73] text-white shadow transition-colors disabled:opacity-60"
                 >
-                  Masuk
+                  {isSigningIn ? 'Memeriksa...' : 'Masuk'}
                 </button>
               </div>
             </form>
@@ -353,7 +502,10 @@ export default function App() {
           setIsAdminMode={handleSetIsAdminMode}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
           onSave={() => alert('Perubahan disimpan!')}
+          activeTab={activeTab}
         />
 
         {/* Balon kutipan berjalan — nempel ke tepi kanan VIEWPORT (position: fixed), SENGAJA
@@ -417,7 +569,7 @@ export default function App() {
             {/* Penggaris Dokumen — HANYA tampil di desktop. Di HP gak relevan & cuma makan tempat,
                 jadi disembunyiin otomatis (bukan berdasarkan toggle manual). */}
             {!isMobileLayout && (
-              <Ruler zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />
+              <Ruler zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} activeTab={activeTab} />
             )}
 
             {/* Lembar Kertas Utama — di HP dibikin nempel penuh (gak ada padding/gap abu-abu
@@ -437,11 +589,9 @@ export default function App() {
                   style={{
                     fontFamily,
                     fontSize: `${fontSize}pt`,
-                    transform: `scale(${fontSize / FONT_SIZE_BASELINE_PT})`,
-                    transformOrigin: 'top center'
                   }}
                 >
-                  <WatermarkBackground odds={portfolioData.odds} />
+                  {activeTab === 'Home' && <WatermarkBackground odds={portfolioData.odds} />}
                   {documentBody}
                 </div>
               ) : (
@@ -454,11 +604,11 @@ export default function App() {
                   style={{ 
                     fontFamily: fontFamily, 
                     fontSize: `${fontSize}pt`,
-                    transform: `scale(${(zoomLevel / 100) * BASE_VIEW_SCALE * (fontSize / FONT_SIZE_BASELINE_PT)})`,
+                    transform: `scale(${(zoomLevel / 100) * BASE_VIEW_SCALE})`,
                     transformOrigin: 'top center'
                   }}
                 >
-                  <WatermarkBackground odds={portfolioData.odds} />
+                  {activeTab === 'Home' && <WatermarkBackground odds={portfolioData.odds} />}
                   {documentBody}
                 </div>
               )}
@@ -481,7 +631,12 @@ export default function App() {
         {/* CSS global mode Hint — cuma nyala pas class `.hint-mode-active` ada di wrapper
             (lihat atas). Nge-target SEMUA elemen `data-hint-id` yang lagi kerender di tab
             yang aktif, otomatis, tanpa perlu tau id-nya satu-satu. `outline` dipakai (bukan
-            border) biar gak geser layout sedikitpun. */}
+            border) biar gak geser layout sedikitpun.
+            Catatan: elemen di LUAR A4 (TitleBar/Ribbon/StatusBar/Ruler) SENGAJA cuma dikasih
+            `data-hint-id` pas `activeTab === 'Home'` (lihat prop `activeTab` yang diteruskan
+            ke tiap komponen itu) — jadi mode Hint di luar kertas cuma nyala khusus di tab
+            Home, gak ikut nyala di tab lain. Gak butuh CSS tambahan di sini karena scoping-nya
+            udah ditentuin di level komponen (attribute-nya ada/nggak), bukan di level CSS. */}
         <style>{`
           .hint-mode-active [data-hint-id] {
             position: relative;

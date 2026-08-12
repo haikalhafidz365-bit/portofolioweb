@@ -38,19 +38,19 @@ export default function About({ data }) {
               className="w-full flex items-center gap-3 py-4 text-left"
             >
               <span
-                className={`font-mono text-xs text-gray-400 dark:text-gray-500 transition-transform duration-200 ${
+                className={`font-mono text-[0.75em] text-gray-400 dark:text-gray-500 transition-transform duration-200 ${
                   isOpen ? 'rotate-90' : ''
                 }`}
               >
                 &gt;
               </span>
-              <span className="font-mono text-sm sm:text-base font-semibold uppercase tracking-[0.15em] text-gray-800 dark:text-gray-200">
+              <span className="font-mono text-[0.875em] sm:text-[1em] font-semibold uppercase tracking-[0.15em] text-gray-800 dark:text-gray-200">
                 {label}
               </span>
             </button>
 
             {isOpen && (
-              <div className="pb-6 pl-7 pr-2 text-base sm:text-lg leading-relaxed sm:leading-loose text-gray-700 dark:text-gray-300 whitespace-pre-line">
+              <div className="pb-6 pl-7 pr-2 text-[1em] sm:text-[1.125em] leading-relaxed sm:leading-loose text-gray-700 dark:text-gray-300 whitespace-pre-line">
                 {Array.isArray(text) ? (
                   text.length > 0 ? (
                     <ul className="space-y-2.5 list-disc list-outside pl-5 marker:text-gray-400 dark:marker:text-gray-600">

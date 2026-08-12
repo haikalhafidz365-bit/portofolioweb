@@ -69,8 +69,8 @@ export default function Book({ data }) {
   if (items.length === 0) {
     return (
       <div className="w-full text-gray-900 dark:text-gray-100 py-10 text-center">
-        <h1 className="text-2xl font-bold mb-2">{heading}</h1>
-        <p className="text-sm text-gray-400 italic">Belum ada karya yang ditambahkan.</p>
+        <h1 className="text-[1.5em] font-bold mb-2">{heading}</h1>
+        <p className="text-[0.875em] text-gray-400 italic">Belum ada karya yang ditambahkan.</p>
       </div>
     );
   }
@@ -137,10 +137,10 @@ export default function Book({ data }) {
       {/* ======================= MODE RAK (tumpukan berantakan + sinopsis singkat di samping) ======================= */}
       {viewMode === 'shelf' && (
         <div className="view-reveal">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-[1.5em] sm:text-[1.875em] font-bold tracking-tight text-gray-900 dark:text-white">
             {heading}
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-8 max-w-lg">
+          <p className="text-[0.875em] text-gray-500 dark:text-gray-400 mt-1 mb-8 max-w-lg">
             {subheading}
           </p>
 
@@ -156,7 +156,7 @@ export default function Book({ data }) {
                   onClick={goPrev}
                   disabled={items.length < 2}
                   aria-label="Geser tumpukan ke kiri"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-30 font-mono text-lg w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] hover:bg-gray-100 dark:hover:bg-white/5 disabled:opacity-20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC]"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-30 font-mono text-[1.125em] w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] hover:bg-gray-100 dark:hover:bg-white/5 disabled:opacity-20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC]"
                 >
                   ←
                 </button>
@@ -176,29 +176,29 @@ export default function Book({ data }) {
                   onClick={goNext}
                   disabled={items.length < 2}
                   aria-label="Geser tumpukan ke kanan"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-30 font-mono text-lg w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] hover:bg-gray-100 dark:hover:bg-white/5 disabled:opacity-20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC]"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-30 font-mono text-[1.125em] w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] hover:bg-gray-100 dark:hover:bg-white/5 disabled:opacity-20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC]"
                 >
                   →
                 </button>
               </div>
 
-              <p className="text-center font-mono text-[10px] text-gray-400 dark:text-gray-500 mt-3">
+              <p className="text-center font-mono text-[0.625em] text-gray-400 dark:text-gray-500 mt-3">
                 ← → geser tumpukan · klik buku paling depan buat baca
               </p>
             </div>
 
             {/* KANAN: judul + sinopsis singkat buku paling depan (teks doang, gak ada interaksi buka di sini) */}
             <div>
-              <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500 tracking-widest">
+              <span className="font-mono text-[0.6875em] text-gray-400 dark:text-gray-500 tracking-widest">
                 PALING DEPAN · {String(activeIndex + 1).padStart(2, '0')} / {String(items.length).padStart(2, '0')}
               </span>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              <h2 className="text-[1.25em] sm:text-[1.5em] font-bold text-gray-900 dark:text-white mt-1">
                 {activeBook.title}
               </h2>
-              <span className="inline-block font-mono text-[10px] uppercase tracking-widest border border-dashed border-[#2B579A]/50 dark:border-[#6FA8DC]/50 text-[#2B579A] dark:text-[#6FA8DC] px-2 py-1 rounded -rotate-2 mt-2">
+              <span className="inline-block font-mono text-[0.625em] uppercase tracking-widest border border-dashed border-[#2B579A]/50 dark:border-[#6FA8DC]/50 text-[#2B579A] dark:text-[#6FA8DC] px-2 py-1 rounded -rotate-2 mt-2">
                 {activeBook.category}
               </span>
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mt-3 max-w-md">
+              <p className="text-[0.875em] text-gray-600 dark:text-gray-400 leading-relaxed mt-3 max-w-md">
                 {activeBook.summary}
               </p>
             </div>
@@ -213,7 +213,7 @@ export default function Book({ data }) {
           <button
             type="button"
             onClick={backToShelf}
-            className="font-mono text-xs text-gray-500 dark:text-gray-400 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] transition-colors mb-6 inline-flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] rounded"
+            className="font-mono text-[0.75em] text-gray-500 dark:text-gray-400 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] transition-colors mb-6 inline-flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] rounded"
           >
             ← Kembali ke Tumpukan
           </button>
@@ -226,7 +226,7 @@ export default function Book({ data }) {
               {activeBook.overviewImage ? (
                 <img src={activeBook.overviewImage} alt={`Isi buku ${activeBook.title}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-center px-6 font-mono text-xs text-gray-400 dark:text-gray-600">
+                <div className="w-full h-full flex items-center justify-center text-center px-6 font-mono text-[0.75em] text-gray-400 dark:text-gray-600">
                   belum ada foto overview buat buku ini
                 </div>
               )}
@@ -239,24 +239,24 @@ export default function Book({ data }) {
               <div className="hidden sm:block absolute top-0 left-0 h-full w-8 bg-gradient-to-r from-black/15 to-transparent pointer-events-none" />
 
               <div>
-                <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500 tracking-widest">
+                <span className="font-mono text-[0.6875em] text-gray-400 dark:text-gray-500 tracking-widest">
                   DOKUMEN {String(activeIndex + 1).padStart(2, '0')} / {String(items.length).padStart(2, '0')}
                 </span>
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mt-1.5 leading-snug">
+                <h1 className="text-[1.25em] sm:text-[1.5em] md:text-[1.875em] font-bold text-gray-900 dark:text-white mt-1.5 leading-snug">
                   {activeBook.title}
                 </h1>
                 <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <span className="inline-block font-mono text-[10px] uppercase tracking-widest border border-dashed border-[#2B579A]/50 dark:border-[#6FA8DC]/50 text-[#2B579A] dark:text-[#6FA8DC] px-2 py-1 rounded -rotate-2">
+                  <span className="inline-block font-mono text-[0.625em] uppercase tracking-widest border border-dashed border-[#2B579A]/50 dark:border-[#6FA8DC]/50 text-[#2B579A] dark:text-[#6FA8DC] px-2 py-1 rounded -rotate-2">
                     {activeBook.category}
                   </span>
                   {activeBook.pageCount && (
-                    <span className="font-mono text-[10px] text-gray-400 dark:text-gray-500">
+                    <span className="font-mono text-[0.625em] text-gray-400 dark:text-gray-500">
                       {activeBook.pageCount} halaman
                     </span>
                   )}
                 </div>
 
-                <div className="text-sm sm:text-base text-gray-700 dark:text-gray-300 leading-relaxed mt-5 space-y-4">
+                <div className="text-[0.875em] sm:text-[1em] text-gray-700 dark:text-gray-300 leading-relaxed mt-5 space-y-4">
                   <p>{activeBook.fullDescription}</p>
                 </div>
               </div>
@@ -267,7 +267,7 @@ export default function Book({ data }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   {...(activeBook.hintEnabled !== false ? { 'data-hint-id': `book-action-${activeBook.id ?? activeIndex}` } : {})}
-                  className="inline-flex items-center gap-2 mt-6 w-fit font-mono text-xs bg-[#2B579A] hover:bg-[#1e3f73] dark:bg-[#6FA8DC] dark:hover:bg-[#5a95c9] text-white dark:text-[#1a1a1a] px-4 py-2 rounded-sm transition-colors"
+                  className="inline-flex items-center gap-2 mt-6 w-fit font-mono text-[0.75em] bg-[#2B579A] hover:bg-[#1e3f73] dark:bg-[#6FA8DC] dark:hover:bg-[#5a95c9] text-white dark:text-[#1a1a1a] px-4 py-2 rounded-sm transition-colors"
                 >
                   {activeBook.actionText || 'Lihat Selengkapnya'} ↗
                 </a>
@@ -275,7 +275,7 @@ export default function Book({ data }) {
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3 font-mono text-[10px] text-gray-400 dark:text-gray-500">
+          <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3 font-mono text-[0.625em] text-gray-400 dark:text-gray-500">
             <span>esc untuk kembali ke tumpukan</span>
             {items.length > 1 && (
               <div className="flex gap-4">

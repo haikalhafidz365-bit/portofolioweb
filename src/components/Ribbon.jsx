@@ -67,11 +67,12 @@ export default function Ribbon({
     </button>
   );
 
-  const RibbonButton = ({ onClick, active, title, children, className = '', disabled }) => (
+  const RibbonButton = ({ onClick, active, title, children, className = '', disabled, ...rest }) => (
     <button
       onClick={onClick}
       title={title}
       disabled={disabled}
+      {...rest}
       className={`flex items-center justify-center rounded-[2px] p-[4px] border border-transparent transition-colors text-gray-700 dark:text-gray-200 ${
         active
           ? 'bg-[#c7e0f4] dark:bg-[#0e3a5f] border-[#90c0e8] dark:border-[#1d5a8f] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.02)]'
@@ -188,6 +189,7 @@ export default function Ribbon({
               <select
                 value={fontFamily}
                 onChange={(e) => setFontFamily(e.target.value)}
+                data-hint-id={activeTab === 'Home' ? 'ribbon-font-family' : undefined}
                 className="border border-gray-300 dark:border-gray-600 dark:bg-[#2d2d2d] dark:text-white rounded-[2px] px-1.5 py-[3px] text-[11.5px] w-[130px] focus:outline-none focus:border-[#2b579a] shadow-sm"
               >
                 {wordFonts.map((f) => (
@@ -197,6 +199,7 @@ export default function Ribbon({
               <select
                 value={fontSize}
                 onChange={(e) => setFontSize(Number(e.target.value))}
+                data-hint-id={activeTab === 'Home' ? 'ribbon-font-size' : undefined}
                 className="border border-gray-300 dark:border-gray-600 dark:bg-[#2d2d2d] dark:text-white rounded-[2px] px-1 py-[3px] text-[11.5px] w-11 focus:outline-none focus:border-[#2b579a] shadow-sm"
               >
                 {wordSizes.map((s) => (
@@ -222,13 +225,13 @@ export default function Ribbon({
 
               <div className="w-px h-4 bg-gray-300/70 dark:bg-gray-700 mx-[2px]" />
 
-              <RibbonButton active={isBold} onClick={() => setIsBold(!isBold)} title="Bold (Ctrl+B)" className="!p-1">
+              <RibbonButton active={isBold} onClick={() => setIsBold(!isBold)} title="Bold (Ctrl+B)" data-hint-id={activeTab === 'Home' ? 'ribbon-bold' : undefined} className="!p-1">
                 <span className="text-[13px] font-bold w-3.5 text-center leading-none">B</span>
               </RibbonButton>
-              <RibbonButton active={isItalic} onClick={() => setIsItalic(!isItalic)} title="Italic (Ctrl+I)" className="!p-1">
+              <RibbonButton active={isItalic} onClick={() => setIsItalic(!isItalic)} title="Italic (Ctrl+I)" data-hint-id={activeTab === 'Home' ? 'ribbon-italic' : undefined} className="!p-1">
                 <span className="text-[13px] italic font-serif w-3.5 text-center leading-none">I</span>
               </RibbonButton>
-              <RibbonButton active={isUnderline} onClick={() => setIsUnderline(!isUnderline)} title="Underline (Ctrl+U)" className="!p-1 gap-0.5 flex-row">
+              <RibbonButton active={isUnderline} onClick={() => setIsUnderline(!isUnderline)} title="Underline (Ctrl+U)" data-hint-id={activeTab === 'Home' ? 'ribbon-underline' : undefined} className="!p-1 gap-0.5 flex-row">
                 <span className="text-[13px] underline w-3 text-center leading-none">U</span>
                 <Chevron className="w-1.5 h-1.5 text-gray-500" />
               </RibbonButton>

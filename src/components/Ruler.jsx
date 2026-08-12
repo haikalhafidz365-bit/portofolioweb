@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 
-export default function Ruler({ zoomLevel, setZoomLevel }) {
+export default function Ruler({ zoomLevel, setZoomLevel, activeTab }) {
   // zoomLevel: misal 100 (%) sebagai default. 
   // Di rentang ruler kita, angka 10 merepresentasikan 100%.
   // Skala penggaris dari 1 sampai 20 (default 10 = 100%)
@@ -82,6 +82,7 @@ export default function Ruler({ zoomLevel, setZoomLevel }) {
         <div 
           onMouseDown={handleMouseDown}
           style={{ left: `calc(48px + ${positionPercentage}% * 0.85)` }}
+          data-hint-id={activeTab === 'Home' ? 'ruler-zoom-handle' : undefined}
           className="absolute top-0 bottom-0 w-4 -ml-2 cursor-ew-resize flex flex-col items-center justify-between z-20 group"
           title={`Zoom: ${currentZoom}% (Geser untuk ubah ukuran)`}
         >

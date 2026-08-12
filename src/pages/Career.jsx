@@ -33,10 +33,10 @@ export default function Career({ data }) {
       {/* ======================= LAYAR 1: MENU KATEGORI (GAME-MENU STYLE) ======================= */}
       {!selectedCategory && (
         <div className="w-full">
-          <h1 className="text-3xl font-bold tracking-tight mb-1 text-gray-900 dark:text-white">
+          <h1 className="text-[1.875em] font-bold tracking-tight mb-1 text-gray-900 dark:text-white">
             {careerData.heading || 'Career & Education'}
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
+          <p className="text-[0.875em] text-gray-500 dark:text-gray-400 mb-8">
             {careerData.subheading || 'Pilih salah satu buat lihat perjalanannya.'}
           </p>
 
@@ -75,19 +75,19 @@ export default function Career({ data }) {
                   )}
 
                   {/* Nomor urut, kesan "level" menu */}
-                  <span className={`absolute top-4 left-4 font-mono text-[11px] tracking-widest ${bgImage ? 'text-white/60' : 'text-[#2B579A]/60 dark:text-[#6FA8DC]/70'}`}>
+                  <span className={`absolute top-4 left-4 font-mono text-[0.6875em] tracking-widest ${bgImage ? 'text-white/60' : 'text-[#2B579A]/60 dark:text-[#6FA8DC]/70'}`}>
                     0{i + 1}
                   </span>
 
                   {/* Konten Menu */}
                   <div className="relative h-full flex flex-col items-center justify-center gap-3 px-4">
-                    <span className={`font-mono text-lg sm:text-xl font-bold uppercase tracking-[0.25em] ${bgImage ? 'text-white drop-shadow-lg' : 'text-[#2B579A] dark:text-[#6FA8DC]'}`}>
+                    <span className={`font-mono text-[1.125em] sm:text-[1.25em] font-bold uppercase tracking-[0.25em] ${bgImage ? 'text-white drop-shadow-lg' : 'text-[#2B579A] dark:text-[#6FA8DC]'}`}>
                       {meta.label}
                     </span>
-                    <span className={`text-[11px] font-mono tracking-wide ${bgImage ? 'text-white/70' : 'text-gray-400 dark:text-gray-500'}`}>
+                    <span className={`text-[0.6875em] font-mono tracking-wide ${bgImage ? 'text-white/70' : 'text-gray-400 dark:text-gray-500'}`}>
                       {itemCount} entri
                     </span>
-                    <span className={`mt-2 text-[10px] font-mono transition-colors duration-300 tracking-wider ${
+                    <span className={`mt-2 text-[0.625em] font-mono transition-colors duration-300 tracking-wider ${
                       bgImage
                         ? 'text-white/0 group-hover:text-white/80'
                         : 'text-[#2B579A]/0 dark:text-[#6FA8DC]/0 group-hover:text-[#2B579A] dark:group-hover:text-[#6FA8DC]'
@@ -111,18 +111,18 @@ export default function Career({ data }) {
           <button
             type="button"
             onClick={() => setSelectedCategory(null)}
-            className="flex items-center gap-1.5 text-xs font-mono text-gray-500 dark:text-gray-400 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] mb-5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] rounded"
+            className="flex items-center gap-1.5 text-[0.75em] font-mono text-gray-500 dark:text-gray-400 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] mb-5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] rounded"
           >
             <span>←</span> Kembali ke Menu
           </button>
 
-          <h1 className="text-2xl font-bold tracking-tight mb-6 text-gray-900 dark:text-white">
+          <h1 className="text-[1.5em] font-bold tracking-tight mb-6 text-gray-900 dark:text-white">
             {CATEGORY_META[selectedCategory].label}
           </h1>
 
           <div>
             {(careerData[selectedCategory]?.items || []).length === 0 && (
-              <p className="text-sm text-gray-400 italic">Belum ada riwayat di sini.</p>
+              <p className="text-[0.875em] text-gray-400 italic">Belum ada riwayat di sini.</p>
             )}
 
             {(careerData[selectedCategory]?.items || []).map((item, idx) => (
@@ -131,13 +131,13 @@ export default function Career({ data }) {
                 className={`flex flex-col sm:flex-row gap-1 sm:gap-6 py-5 ${idx !== 0 ? 'border-t border-gray-200 dark:border-gray-700' : ''}`}
               >
                 {/* Kolom kiri: periode waktu */}
-                <div className="sm:w-32 shrink-0 font-mono text-xs text-gray-400 dark:text-gray-500">
+                <div className="sm:w-32 shrink-0 font-mono text-[0.75em] text-gray-400 dark:text-gray-500">
                   {item.period}
                 </div>
 
                 {/* Kolom kanan: posisi, instansi (klik = pop-up), deskripsi */}
                 <div className="flex-1 space-y-1.5">
-                  <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                  <h3 className="text-[1em] font-bold text-gray-900 dark:text-white">
                     {item.role}
                   </h3>
 
@@ -145,13 +145,13 @@ export default function Career({ data }) {
                     type="button"
                     onClick={() => setSelectedPopup(item.companyInfo)}
                     {...(item.hintEnabled !== false ? { 'data-hint-id': `career-company-${item.id || idx}` } : {})}
-                    className="font-mono text-sm text-gray-700 dark:text-gray-300 underline decoration-gray-400 dark:decoration-gray-600 underline-offset-2 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] hover:decoration-[#2B579A] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] rounded"
+                    className="font-mono text-[0.875em] text-gray-700 dark:text-gray-300 underline decoration-gray-400 dark:decoration-gray-600 underline-offset-2 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] hover:decoration-[#2B579A] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] rounded"
                     title="Klik untuk melihat detail"
                   >
                     {item.company}
                   </button>
 
-                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed pt-1">
+                  <p className="text-[0.875em] text-gray-600 dark:text-gray-400 leading-relaxed pt-1">
                     {item.description}
                   </p>
                 </div>
@@ -174,7 +174,7 @@ export default function Career({ data }) {
             <button
               onClick={() => setSelectedPopup(null)}
               aria-label="Tutup"
-              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/85 dark:bg-black/50 backdrop-blur-sm text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white font-mono text-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC]"
+              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/85 dark:bg-black/50 backdrop-blur-sm text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white font-mono text-[1.125em] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC]"
             >
               ✕
             </button>
@@ -194,23 +194,23 @@ export default function Career({ data }) {
 
             {/* Kolom kanan: info instansi, discroll sendiri kalau kepanjangan */}
             <div className="flex-1 min-h-0 overflow-y-auto p-6 sm:p-8">
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1.5 pr-8">
+              <h3 className="text-[1.125em] sm:text-[1.25em] font-bold text-gray-900 dark:text-white mb-1.5 pr-8">
                 {selectedPopup.name}
               </h3>
 
               {selectedPopup.address && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                <p className="text-[0.75em] text-gray-500 dark:text-gray-400 mb-4">
                   {selectedPopup.address}
                 </p>
               )}
 
-              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              <p className="text-[0.875em] text-gray-700 dark:text-gray-300 leading-relaxed">
                 {selectedPopup.about}
               </p>
 
               <button
                 onClick={() => setSelectedPopup(null)}
-                className="mt-6 w-full py-2 bg-gray-100 dark:bg-[#2d2d2d] hover:bg-gray-200 dark:hover:bg-[#383838] text-gray-800 dark:text-gray-200 text-xs font-semibold rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#2d2d2d]"
+                className="mt-6 w-full py-2 bg-gray-100 dark:bg-[#2d2d2d] hover:bg-gray-200 dark:hover:bg-[#383838] text-gray-800 dark:text-gray-200 text-[0.75em] font-semibold rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#2d2d2d]"
               >
                 Tutup
               </button>
