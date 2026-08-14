@@ -133,7 +133,7 @@ export default function WatermarkBackground({ odds }) {
           right: '3%',
           fontSize: '8pt',
           lineHeight: 1.4,
-          opacity: 0.62,
+          opacity: 0.4,
           WebkitMaskImage: fadeMask,
           maskImage: fadeMask,
           overflow: 'hidden',

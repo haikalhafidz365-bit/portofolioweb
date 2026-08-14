@@ -57,7 +57,21 @@ export default function Home({ data }) {
       </h1>
 
       {/* Bio Singkat / Role */}
-      <p className="text-[0.875em] sm:text-[1em] text-gray-700 dark:text-gray-300 max-w-xl leading-relaxed text-left">
+      {/* Lebar bio SENGAJA dibatasin pake PERSENTASE (bukan max-w-sm/xl fixed), dihitung
+          dari struktur CSS kertas: watermark mulai di 60% dari tepi kertas (lihat
+          WatermarkBackground.jsx), sedangkan bio ini mulai agak masuk dari tepi kertas
+          (kena padding kertas p-8 + padding Home sendiri px-4/px-8).
+          Sebelumnya dipasang 36% — ternyata KETERLALUAN sempit, kolomnya jadi cuma
+          muat dikit kata per baris dan bikin text-justify maksa renggangin spasi
+          antar kata (jadi jelek, kayak river gap). Sekarang dilebarin ke 55% biar
+          bacaannya normal (mirip tampilan lama), dan sebagai gantinya titik mulai
+          watermark DIMUNDURIN ke 60% (dari yang tadinya 40%) biar tetep ada jarak
+          aman ~5% dari lebar Home di antara ujung kanan bio & awal watermark —
+          gak ketimpa lagi. Kedua angka ini (55% di sini & 60% di
+          WatermarkBackground.jsx) SALING PASANGAN: kalau salah satu diubah, angka
+          satunya juga musti disesuaiin biar jaraknya tetep aman. Tetep proporsional
+          (bukan angka px tetap) biar aman walau kertas resize/zoom berubah. */}
+      <p className="text-[0.875em] sm:text-[1em] text-gray-800 dark:text-gray-200 max-w-full sm:max-w-[55%] leading-relaxed text-justify">
         {role}{role && bio ? '. ' : ''}{bio}
       </p>
 
