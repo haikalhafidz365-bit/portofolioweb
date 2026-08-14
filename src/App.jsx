@@ -302,12 +302,10 @@ export default function App() {
 
   // Mode "Hint" — toggle dari tombol HintToggle di pojok kiri atas. Pas true, semua
   // elemen `data-hint-id` di tab yang lagi kebuka ikutan blink (lihat class
-  // `.hint-mode-active` di CSS global bawah). Otomatis dimatiin lagi tiap kali visitor
-  // pindah tab, biar gak "nempel nyala" pas dia geser ke tab lain yang gak dia cek dulu.
+  // `.hint-mode-active` di CSS global bawah). SENGAJA gak ada auto-off pas ganti tab
+  // (activeTab) — biar visitor bisa nyalain hint sekali terus keliling semua tab
+  // sambil hint-nya tetep nyala, sampe dia matiin manual lewat tombolnya lagi.
   const [hintActive, setHintActive] = useState(false);
-  useEffect(() => {
-    setHintActive(false);
-  }, [activeTab]);
 
   // Kirim "page view" tiap kali visitor pindah tab (Home/About/Career/dst) — biar
   // tiap tab kehitung sebagai halaman sendiri di laporan Analytics, bukan cuma

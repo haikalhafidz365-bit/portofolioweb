@@ -7,9 +7,9 @@ const TABS = ['home', 'about', 'career', 'book', 'projects', 'contact', 'odds', 
 const TAB_META = {
   home: { label: 'Home', desc: 'Nama, role, bio singkat & foto profil' },
   about: { label: 'About', desc: 'Cerita Live, Life, Laugh' },
-  career: { label: 'Career', desc: 'Riwayat sekolah, kuliah & profesional' },
+  career: { label: 'Career', desc: 'Riwayat kerja, pendidikan, pencapaian & sertifikat' },
   book: { label: 'Book', desc: 'Buku, tulisan & karya open-source' },
-  projects: { label: 'Projects', desc: 'Artikel & Poster' },
+  projects: { label: 'Projects', desc: 'Artikel, Poster & tab tambahan bebas' },
   contact: { label: 'Contact', desc: 'Info kontak, sosmed & tombol aksi' },
   odds: { label: 'Odds', desc: 'Serpihan tulisan buat aksen latar di semua tab' },
   quotes: { label: 'Quotes', desc: 'Kutipan buat balon komentar berjalan di tepi kanan' },
@@ -34,7 +34,15 @@ const normalizeGeneral = (raw) => ({
   },
 });
 
-const CAREER_CATEGORIES = ['professional', 'school', 'college'];
+// Kategori Career SEKARANG bebas ditambah/dihapus/diubah namanya lewat CMS (gak lagi
+// di-hardcode Professional/School/College). Tiap kategori punya `type`:
+//  - 'career': format lama — Posisi @ Instansi, periode, pop-up detail instansi.
+//  - 'credential': format baru — nama pencapaian/sertifikat, penyelenggara, tanggal,
+//    gambar bukti, link verifikasi (buat Achievements/Certificates/dll).
+const CAREER_TYPE_LABEL = {
+  career: 'Riwayat (Posisi @ Instansi)',
+  credential: 'Pencapaian / Sertifikat',
+};
 
 const emptyCareerItem = () => ({
   id: `item-${Date.now()}`,
@@ -47,16 +55,66 @@ const emptyCareerItem = () => ({
   companyInfo: { name: '', address: '', photo: '', about: '' },
 });
 
-// Jaga-jaga: data career di Supabase bisa aja masih format lama (array polos berisi
-// item riwayat langsung), sementara format baru butuh { bgImage, items }. Fungsi ini
-// nyamain keduanya jadi format baru biar CMS gak crash gara-gara baca .items dari
-// data yang ternyata masih array lama.
-function normalizeCareerCategory(raw) {
-  if (Array.isArray(raw)) return { bgImage: '', items: raw };
-  if (raw && typeof raw === 'object') {
-    return { bgImage: raw.bgImage || '', items: Array.isArray(raw.items) ? raw.items : [] };
+const emptyCredentialItem = () => ({
+  id: `cred-${Date.now()}`,
+  title: '',
+  issuer: '',
+  date: '',
+  image: '',
+  description: '',
+  verifyUrl: '',
+  hintEnabled: true,
+});
+
+const emptyCareerCategory = (type = 'career') => ({
+  id: `cat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+  name: '',
+  type,
+  bgImage: '',
+  items: [],
+});
+
+// Jaga-jaga: data career di Supabase bisa aja masih format LAMA (key tetap
+// school/college/professional, masing-masing { bgImage, items } atau array polos),
+// sementara format BARU butuh { heading, subheading, categories: [...] }. Fungsi ini
+// nyamain semua kemungkinan bentuk lama jadi format baru — kategori "school" SENGAJA
+// didrop (dianggap gak relevan lagi), Professional & College dipertahankan.
+function normalizeCareerData(raw) {
+  const careerData = raw || {};
+
+  if (Array.isArray(careerData.categories)) {
+    return {
+      heading: careerData.heading || '',
+      subheading: careerData.subheading || '',
+      categories: careerData.categories.map((cat) => ({
+        id: cat.id || emptyCareerCategory().id,
+        name: cat.name || '',
+        type: cat.type === 'credential' ? 'credential' : 'career',
+        bgImage: cat.bgImage || '',
+        items: Array.isArray(cat.items) ? cat.items : [],
+      })),
+    };
   }
-  return { bgImage: '', items: [] };
+
+  const legacyToCategory = (raw, id, name) => {
+    const legacy = Array.isArray(raw) ? { bgImage: '', items: raw } : (raw || {});
+    return {
+      id,
+      name,
+      type: 'career',
+      bgImage: legacy.bgImage || '',
+      items: Array.isArray(legacy.items) ? legacy.items : [],
+    };
+  };
+
+  return {
+    heading: careerData.heading || '',
+    subheading: careerData.subheading || '',
+    categories: [
+      legacyToCategory(careerData.professional, 'professional', 'Professional'),
+      legacyToCategory(careerData.college, 'college', 'College'),
+    ],
+  };
 }
 
 // Sama kayak career: jaga-jaga data books di Supabase masih array polos yang lama,
@@ -109,47 +167,71 @@ const emptyPosterItem = () => ({
   hintEnabled: true,
 });
 
-const emptySubBab = (name = '') => ({
-  id: `subbab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-  name,
+// Tab tambahan bebas (di luar Articles & Poster bawaan) — tiap tab punya nama sendiri
+// (label yang tampil di navigasi) + daftar kartu sederhana di dalamnya.
+const emptyCustomItem = () => ({
+  id: `custom-item-${Date.now()}`,
+  title: '',
+  category: '',
+  imageUrl: '',
+  description: '',
+  url: '',
+  hintEnabled: true,
+});
+
+const emptyCustomSection = (label = '') => ({
+  id: `section-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+  label,
   items: [],
 });
 
 // Jaga-jaga: data projects di Supabase bisa aja masih format lama:
 //  - projects.posters: array polos (format paling lama)
 //  - projects.gallery: { poster: [...], photo: [...] } (format sebelum ada Sub Bab)
-// Semua itu dimigrasiin otomatis jadi format baru: projects.poster.subBabs (array
-// sub bab, tiap sub bab punya nama + daftar item sendiri). Item poster lama yang
-// belum punya sub bab dikumpulin jadi 1 sub bab default "Umum" biar gak ilang.
+//  - projects.poster.subBabs: array sub bab, tiap sub bab punya items sendiri
+//    (format saat Poster masih dikelompokkan per Sub Bab — fitur ini udah dihapus)
+// Semua itu dimigrasiin otomatis jadi format baru: projects.poster.items (array
+// poster polos, langsung tanpa pengelompokan). Item dari semua sub bab lama
+// digabung jadi 1 daftar biar gak ada yang ilang.
 // `photo` SENGAJA gak dimigrasiin lagi — fitur Photo udah dihapus dari CMS & halaman publik.
 function normalizeProjectsData(raw) {
   const projects = raw || {};
   const articles = Array.isArray(projects.articles) ? projects.articles : [];
 
-  let subBabs;
-  if (projects.poster && Array.isArray(projects.poster.subBabs)) {
-    // Format baru — sudah oke, tinggal pastiin tiap sub bab punya items array
-    subBabs = projects.poster.subBabs.map((sb) => ({
-      id: sb.id || emptySubBab().id,
-      name: sb.name || '',
-      items: Array.isArray(sb.items) ? sb.items : [],
-    }));
+  let items;
+  if (projects.poster && Array.isArray(projects.poster.items)) {
+    // Format terbaru — sudah flat, tinggal pastiin array
+    items = projects.poster.items;
+  } else if (projects.poster && Array.isArray(projects.poster.subBabs)) {
+    // Format lama (per Sub Bab) — gabungin semua item dari tiap sub bab jadi 1 daftar
+    items = projects.poster.subBabs.flatMap((sb) => (Array.isArray(sb.items) ? sb.items : []));
   } else {
-    // Format lama: kumpulin item poster yang ada (dari gallery.poster atau projects.posters)
-    // jadi 1 sub bab default, biar data lama gak ilang.
-    const oldItems = Array.isArray(projects.gallery?.poster)
+    // Format lebih lama lagi: gallery.poster atau projects.posters
+    items = Array.isArray(projects.gallery?.poster)
       ? projects.gallery.poster
       : Array.isArray(projects.posters)
       ? projects.posters
       : [];
-    subBabs = oldItems.length > 0 ? [{ ...emptySubBab('Umum'), items: oldItems }] : [];
   }
 
   return {
     heading: projects.heading || '',
     subheading: projects.subheading || '',
+    // Label tab navigasi buat Articles & Poster — kosong berarti pakai default
+    // ('Articles'/'Poster') di halaman publik.
+    articlesLabel: projects.articlesLabel || '',
+    posterLabel: projects.posterLabel || '',
     articles,
-    poster: { subBabs },
+    poster: { items },
+    // Tab tambahan bebas (di luar Articles & Poster) — kalau data lama belum punya
+    // field ini sama sekali, defaultnya array kosong (bukan ilang pas disave ulang).
+    customSections: Array.isArray(projects.customSections)
+      ? projects.customSections.map((s) => ({
+          id: s.id || emptyCustomSection().id,
+          label: s.label || '',
+          items: Array.isArray(s.items) ? s.items : [],
+        }))
+      : [],
   };
 }
 
@@ -258,16 +340,9 @@ export default function CmsDashboard({ data, onSave, onClose }) {
   // Salinan lokal yang bisa diedit bebas — baru dikirim ke portfolioData asli pas Save ditekan.
   const [formData, setFormData] = useState(() => {
     const cloned = JSON.parse(JSON.stringify(data));
-    const normalizedCareer = {
-      heading: cloned.career?.heading || '',
-      subheading: cloned.career?.subheading || '',
-    };
-    CAREER_CATEGORIES.forEach((cat) => {
-      normalizedCareer[cat] = normalizeCareerCategory(cloned.career?.[cat]);
-    });
     return {
       ...cloned,
-      career: normalizedCareer,
+      career: normalizeCareerData(cloned.career),
       books: normalizeBooksData(cloned.books),
       projects: normalizeProjectsData(cloned.projects),
       odds: Array.isArray(cloned.odds) ? cloned.odds : [],
@@ -277,6 +352,28 @@ export default function CmsDashboard({ data, onSave, onClose }) {
   });
   // null = layar menu utama (pilih salah satu dari 6 tab dulu sebelum masuk ke isinya)
   const [activeTab, setActiveTab] = useState(null);
+  // Sub-tab DI DALAM panel "Projects": 'articles' | 'poster' | 'custom'. Dipisah biar
+  // admin gak harus scroll ngelewatin Articles+Poster+Tab Tambahan sekaligus dalam 1
+  // halaman panjang — cuma 1 section yang di-render/kelihatan dalam satu waktu, mirip
+  // nav Articles/Poster di halaman publiknya sendiri.
+  const [activeProjectsSubTab, setActiveProjectsSubTab] = useState('articles');
+  // Artikel mana yang lagi "dibuka" buat diedit penuh (judul, gambar, isi lengkap, dst).
+  // null = semua artikel collapsed (cuma judul + tombol Edit doang). Sengaja dibikin
+  // begini biar admin gak usah scroll ngelewatin artikel lain yang isinya panjang cuma
+  // buat pindah ke artikel berikutnya — dan biar RichTextEditor (yang lumayan berat)
+  // cuma ke-mount 1 biji dalam satu waktu, bukan sekaligus buat semua artikel.
+  const [expandedArticleIdx, setExpandedArticleIdx] = useState(null);
+  // Item Career mana (di kategori mana) yang lagi "dibuka" buat diedit penuh — sama
+  // konsepnya kayak expandedArticleIdx di atas, tapi keynya gabungan "catIdx-idx" karena
+  // Career punya banyak kategori sekaligus (bukan 1 daftar rata kayak Articles). null =
+  // semua item collapsed (cuma judul singkat + tombol Edit), biar kategori yang isinya
+  // banyak item gak bikin CMS numpuk panjang ke bawah.
+  const [expandedCareerKey, setExpandedCareerKey] = useState(null);
+  // Kategori Career mana yang lagi ditampilin (id kategori) — sama konsepnya kayak
+  // activeProjectsSubTab: cuma 1 kategori yang keliatan isinya dalam satu waktu, sisanya
+  // disembunyiin di balik pill tab. null = fallback ke kategori pertama (lihat currentCareerCatIdx
+  // di render). Direset ke null kalau kategori yang lagi aktif dihapus.
+  const [activeCareerCategory, setActiveCareerCategory] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isUploadingPhotoDark, setIsUploadingPhotoDark] = useState(false);
@@ -292,8 +389,11 @@ export default function CmsDashboard({ data, onSave, onClose }) {
   const [uploadingArticleImage, setUploadingArticleImage] = useState(null);
   // Index tombol aksi (di tab Contact) yang lagi proses upload file-nya (mis. PDF resume)
   const [uploadingActionButton, setUploadingActionButton] = useState(null);
-  // Kunci berupa "poster-{subBabIdx}-{itemIdx}" buat nandain item poster mana yang lagi upload
+  // Kunci berupa "poster-{itemIdx}" buat nandain item poster mana yang lagi upload
   const [uploadingGalleryImage, setUploadingGalleryImage] = useState(null);
+  // Kunci berupa "{sectionIdx}-{itemIdx}" buat nandain item di tab tambahan (custom section)
+  // mana yang lagi proses upload gambarnya
+  const [uploadingCustomImage, setUploadingCustomImage] = useState(null);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -314,16 +414,9 @@ export default function CmsDashboard({ data, onSave, onClose }) {
       // Buang perubahan yang belum disimpan, balik ke data asli — tapi tetep di admin mode,
       // cuma balik ke menu pilih tab. Bukan onClose(), biar gak langsung ke-logout.
       const cloned = JSON.parse(JSON.stringify(data));
-      const normalizedCareer = {
-        heading: cloned.career?.heading || '',
-        subheading: cloned.career?.subheading || '',
-      };
-      CAREER_CATEGORIES.forEach((cat) => {
-        normalizedCareer[cat] = normalizeCareerCategory(cloned.career?.[cat]);
-      });
       setFormData({
         ...cloned,
-        career: normalizedCareer,
+        career: normalizeCareerData(cloned.career),
         books: normalizeBooksData(cloned.books),
         projects: normalizeProjectsData(cloned.projects),
         odds: Array.isArray(cloned.odds) ? cloned.odds : [],
@@ -372,47 +465,80 @@ export default function CmsDashboard({ data, onSave, onClose }) {
   const setCareerHeading = (field, value) =>
     setFormData((p) => ({ ...p, career: { ...p.career, [field]: value } }));
 
-  // Ganti gambar latar kartu menu (School/College/Professional) di halaman publik
-  const setCareerBgImage = (category, value) =>
-    setFormData((p) => ({
-      ...p,
-      career: { ...p.career, [category]: { ...p.career[category], bgImage: value } },
-    }));
-
-  const setCareerItemField = (category, idx, field, value) =>
+  // Helper: update 1 kategori di dalam array career.categories berdasarkan index-nya
+  const updateCareerCategory = (catIdx, updater) =>
     setFormData((p) => {
-      const items = [...p.career[category].items];
-      items[idx] = { ...items[idx], [field]: value };
-      return { ...p, career: { ...p.career, [category]: { ...p.career[category], items } } };
+      const categories = [...p.career.categories];
+      categories[catIdx] = updater(categories[catIdx]);
+      return { ...p, career: { ...p.career, categories } };
     });
 
-  const setCareerCompanyInfoField = (category, idx, field, value) =>
-    setFormData((p) => {
-      const items = [...p.career[category].items];
+  // Nambah kategori baru (kosong) — tipe dipilih pas nambah, bisa diganti lagi belakangan
+  const addCareerCategory = (type = 'career') => {
+    const newCat = emptyCareerCategory(type);
+    setActiveCareerCategory(newCat.id);
+    setFormData((p) => ({
+      ...p,
+      career: { ...p.career, categories: [...p.career.categories, newCat] },
+    }));
+  };
+
+  const removeCareerCategory = (catIdx) => {
+    const removedId = formData.career.categories[catIdx]?.id;
+    setActiveCareerCategory((cur) => (cur === removedId ? null : cur));
+    setFormData((p) => ({
+      ...p,
+      career: { ...p.career, categories: p.career.categories.filter((_, i) => i !== catIdx) },
+    }));
+  };
+
+  // Nama kategori yang tampil di kartu menu (bebas diganti, mis. "Professional" -> "Kerja")
+  const setCareerCategoryName = (catIdx, value) =>
+    updateCareerCategory(catIdx, (cat) => ({ ...cat, name: value }));
+
+  // Tipe kartu kategori: 'career' (Posisi @ Instansi) atau 'credential' (Pencapaian/Sertifikat).
+  // Ganti tipe TIDAK ngubah item yang udah ada (field yang gak relevan cuma gak dipakai di
+  // tampilan publik) — biar aman kalau kepencet gak sengaja, tapi sebaiknya diisi ulang.
+  const setCareerCategoryType = (catIdx, value) =>
+    updateCareerCategory(catIdx, (cat) => ({ ...cat, type: value }));
+
+  // Ganti gambar latar kartu menu kategori di halaman publik
+  const setCareerBgImage = (catIdx, value) =>
+    updateCareerCategory(catIdx, (cat) => ({ ...cat, bgImage: value }));
+
+  const setCareerItemField = (catIdx, idx, field, value) =>
+    updateCareerCategory(catIdx, (cat) => {
+      const items = [...cat.items];
+      items[idx] = { ...items[idx], [field]: value };
+      return { ...cat, items };
+    });
+
+  const setCareerCompanyInfoField = (catIdx, idx, field, value) =>
+    updateCareerCategory(catIdx, (cat) => {
+      const items = [...cat.items];
       items[idx] = {
         ...items[idx],
         companyInfo: { ...items[idx].companyInfo, [field]: value },
       };
-      return { ...p, career: { ...p.career, [category]: { ...p.career[category], items } } };
+      return { ...cat, items };
     });
 
-  const addCareerItem = (category) =>
-    setFormData((p) => ({
-      ...p,
-      career: {
-        ...p.career,
-        [category]: { ...p.career[category], items: [...p.career[category].items, emptyCareerItem()] },
-      },
+  const addCareerItem = (catIdx) => {
+    const newIdx = formData.career.categories[catIdx]?.items.length ?? 0;
+    setExpandedCareerKey(`${catIdx}-${newIdx}`);
+    updateCareerCategory(catIdx, (cat) => ({
+      ...cat,
+      items: [...cat.items, cat.type === 'credential' ? emptyCredentialItem() : emptyCareerItem()],
     }));
+  };
 
-  const removeCareerItem = (category, idx) =>
-    setFormData((p) => ({
-      ...p,
-      career: {
-        ...p.career,
-        [category]: { ...p.career[category], items: p.career[category].items.filter((_, i) => i !== idx) },
-      },
+  const removeCareerItem = (catIdx, idx) => {
+    setExpandedCareerKey((cur) => (cur === `${catIdx}-${idx}` ? null : cur));
+    updateCareerCategory(catIdx, (cat) => ({
+      ...cat,
+      items: cat.items.filter((_, i) => i !== idx),
     }));
+  };
 
   /* ============ BOOKS ============ */
   // Judul & sub-judul di halaman Book (di atas rak buku)
@@ -441,60 +567,96 @@ export default function CmsDashboard({ data, onSave, onClose }) {
       articles[idx] = { ...articles[idx], [field]: value };
       return { ...p, projects: { ...p.projects, articles } };
     });
-  const addArticle = () =>
+  const addArticle = () => {
+    setExpandedArticleIdx(formData.projects.articles.length);
     setFormData((p) => ({
       ...p,
       projects: { ...p.projects, articles: [...p.projects.articles, emptyArticle()] },
     }));
-  const removeArticle = (idx) =>
+  };
+  const removeArticle = (idx) => {
+    setExpandedArticleIdx((cur) => (cur === idx ? null : cur));
     setFormData((p) => ({
       ...p,
       projects: { ...p.projects, articles: p.projects.articles.filter((_, i) => i !== idx) },
     }));
+  };
 
-  /* ============ PROJECTS: POSTER (dikelompokkan per Sub Bab) ============ */
-  const addSubBab = () =>
-    setFormData((p) => ({
-      ...p,
-      projects: {
-        ...p.projects,
-        poster: { subBabs: [...p.projects.poster.subBabs, emptySubBab()] },
-      },
-    }));
-  const removeSubBab = (subBabIdx) =>
-    setFormData((p) => ({
-      ...p,
-      projects: {
-        ...p.projects,
-        poster: { subBabs: p.projects.poster.subBabs.filter((_, i) => i !== subBabIdx) },
-      },
-    }));
-  const setSubBabName = (subBabIdx, name) =>
+  /* ============ PROJECTS: POSTER (daftar file langsung, tanpa Sub Bab) ============ */
+  const setPosterItemField = (itemIdx, field, value) =>
     setFormData((p) => {
-      const subBabs = [...p.projects.poster.subBabs];
-      subBabs[subBabIdx] = { ...subBabs[subBabIdx], name };
-      return { ...p, projects: { ...p.projects, poster: { subBabs } } };
-    });
-
-  const setPosterItemField = (subBabIdx, itemIdx, field, value) =>
-    setFormData((p) => {
-      const subBabs = [...p.projects.poster.subBabs];
-      const items = [...subBabs[subBabIdx].items];
+      const items = [...p.projects.poster.items];
       items[itemIdx] = { ...items[itemIdx], [field]: value };
-      subBabs[subBabIdx] = { ...subBabs[subBabIdx], items };
-      return { ...p, projects: { ...p.projects, poster: { subBabs } } };
+      return { ...p, projects: { ...p.projects, poster: { items } } };
     });
-  const addPosterItem = (subBabIdx) =>
+  const addPosterItem = () =>
+    setFormData((p) => ({
+      ...p,
+      projects: { ...p.projects, poster: { items: [...p.projects.poster.items, emptyPosterItem()] } },
+    }));
+  const removePosterItem = (itemIdx) =>
+    setFormData((p) => ({
+      ...p,
+      projects: {
+        ...p.projects,
+        poster: { items: p.projects.poster.items.filter((_, i) => i !== itemIdx) },
+      },
+    }));
+
+  /* ============ PROJECTS: TAB TAMBAHAN (CUSTOM SECTIONS) ============ */
+  // Nama tab-nya sendiri bebas ditentuin (mis. "Dummy Projects", "Eksperimen", dll).
+  // Tiap custom section dapet pill nav sendiri (sejajar Articles/Poster) — begitu
+  // ditambah, langsung pindah ke pill barunya biar bisa langsung diedit namanya,
+  // gak numpuk collapsed di dalam 1 wrapper tab generik lagi.
+  const addCustomSection = () => {
+    const newSection = emptyCustomSection();
+    setFormData((p) => ({
+      ...p,
+      projects: { ...p.projects, customSections: [...p.projects.customSections, newSection] },
+    }));
+    setActiveProjectsSubTab(`custom:${newSection.id}`);
+  };
+  const removeCustomSection = (sectionIdx) => {
+    const removedId = formData.projects.customSections[sectionIdx]?.id;
+    if (removedId && activeProjectsSubTab === `custom:${removedId}`) {
+      setActiveProjectsSubTab('articles');
+    }
+    setFormData((p) => ({
+      ...p,
+      projects: { ...p.projects, customSections: p.projects.customSections.filter((_, i) => i !== sectionIdx) },
+    }));
+  };
+  const setCustomSectionLabel = (sectionIdx, label) =>
     setFormData((p) => {
-      const subBabs = [...p.projects.poster.subBabs];
-      subBabs[subBabIdx] = { ...subBabs[subBabIdx], items: [...subBabs[subBabIdx].items, emptyPosterItem()] };
-      return { ...p, projects: { ...p.projects, poster: { subBabs } } };
+      const customSections = [...p.projects.customSections];
+      customSections[sectionIdx] = { ...customSections[sectionIdx], label };
+      return { ...p, projects: { ...p.projects, customSections } };
     });
-  const removePosterItem = (subBabIdx, itemIdx) =>
+  const setCustomItemField = (sectionIdx, itemIdx, field, value) =>
     setFormData((p) => {
-      const subBabs = [...p.projects.poster.subBabs];
-      subBabs[subBabIdx] = { ...subBabs[subBabIdx], items: subBabs[subBabIdx].items.filter((_, i) => i !== itemIdx) };
-      return { ...p, projects: { ...p.projects, poster: { subBabs } } };
+      const customSections = [...p.projects.customSections];
+      const items = [...customSections[sectionIdx].items];
+      items[itemIdx] = { ...items[itemIdx], [field]: value };
+      customSections[sectionIdx] = { ...customSections[sectionIdx], items };
+      return { ...p, projects: { ...p.projects, customSections } };
+    });
+  const addCustomItem = (sectionIdx) =>
+    setFormData((p) => {
+      const customSections = [...p.projects.customSections];
+      customSections[sectionIdx] = {
+        ...customSections[sectionIdx],
+        items: [...customSections[sectionIdx].items, emptyCustomItem()],
+      };
+      return { ...p, projects: { ...p.projects, customSections } };
+    });
+  const removeCustomItem = (sectionIdx, itemIdx) =>
+    setFormData((p) => {
+      const customSections = [...p.projects.customSections];
+      customSections[sectionIdx] = {
+        ...customSections[sectionIdx],
+        items: customSections[sectionIdx].items.filter((_, i) => i !== itemIdx),
+      };
+      return { ...p, projects: { ...p.projects, customSections } };
     });
 
   /* ============ CONTACT ============ */
@@ -529,7 +691,7 @@ export default function CmsDashboard({ data, onSave, onClose }) {
       ...p,
       contact: {
         ...p.contact,
-        actionButtons: [...p.contact.actionButtons, { label: '', url: '', primary: false }],
+        actionButtons: [...p.contact.actionButtons, { label: '', url: '', primary: false, body: '' }],
       },
     }));
   const removeActionButton = (idx) =>
@@ -538,8 +700,8 @@ export default function CmsDashboard({ data, onSave, onClose }) {
       contact: { ...p.contact, actionButtons: p.contact.actionButtons.filter((_, i) => i !== idx) },
     }));
 
-  /* ============ REORDER (Articles & Poster items per Sub Bab) ============ */
-  // listKey: 'articles' ATAU 'poster-{subBabIdx}' — nyimpen daftar mana yang lagi diurutin
+  /* ============ REORDER (Articles & Poster items) ============ */
+  // listKey: 'articles' ATAU 'poster' — nyimpen daftar mana yang lagi diurutin
   const dragInfo = useRef({ listKey: null, index: null });
   const [draggingKey, setDraggingKey] = useState(null);
 
@@ -553,17 +715,27 @@ export default function CmsDashboard({ data, onSave, onClose }) {
         articles.splice(toIdx, 0, moved);
         return { ...p, projects: { ...p.projects, articles } };
       });
-    } else if (listKey.startsWith('poster-')) {
-      const subBabIdx = Number(listKey.slice('poster-'.length));
+    } else if (listKey === 'poster') {
       setFormData((p) => {
-        const subBabs = [...p.projects.poster.subBabs];
-        const items = subBabs[subBabIdx].items;
+        const items = p.projects.poster.items;
         if (toIdx >= items.length) return p;
         const newItems = [...items];
         const [moved] = newItems.splice(fromIdx, 1);
         newItems.splice(toIdx, 0, moved);
-        subBabs[subBabIdx] = { ...subBabs[subBabIdx], items: newItems };
-        return { ...p, projects: { ...p.projects, poster: { subBabs } } };
+        return { ...p, projects: { ...p.projects, poster: { items: newItems } } };
+      });
+    } else if (listKey.startsWith('career:')) {
+      // listKey = "career:<catIdx>" — urutin item DI DALAM kategori itu doang.
+      const catIdx = Number(listKey.slice('career:'.length));
+      setFormData((p) => {
+        const categories = [...p.career.categories];
+        const items = categories[catIdx]?.items;
+        if (!items || toIdx >= items.length) return p;
+        const newItems = [...items];
+        const [moved] = newItems.splice(fromIdx, 1);
+        newItems.splice(toIdx, 0, moved);
+        categories[catIdx] = { ...categories[catIdx], items: newItems };
+        return { ...p, career: { ...p.career, categories } };
       });
     }
   };
@@ -643,66 +815,131 @@ export default function CmsDashboard({ data, onSave, onClose }) {
     </button>
   );
 
-  // Blok form 1 Sub Bab Poster — nama sub bab (bisa diedit/dihapus) + daftar item poster
-  // di dalamnya (bisa ditambah/diurutin/dihapus, sama kayak form item lama).
-  const PosterSubBabSection = ({ subBab, subBabIdx }) => {
-    const listKey = `poster-${subBabIdx}`;
-    const items = subBab.items;
+  // Blok form 1 item Poster — file langsung tanpa Sub Bab, tinggal "Tambah Poster"
+  // dan item baru langsung nongol di daftar (bisa diurutin/dihapus).
+  const renderPosterItem = (it, idx, items) => {
+    const listKey = 'poster';
     return (
-      <div className="p-4 bg-gray-50 dark:bg-[#252526] rounded border border-gray-200 dark:border-gray-700 space-y-3">
+      <div
+        key={it.id || idx}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop(listKey, idx)}
+        className={`p-3 bg-white dark:bg-[#2d2d2d] rounded border border-gray-200 dark:border-gray-700 space-y-2 transition-opacity ${
+          draggingKey === `${listKey}-${idx}` ? 'opacity-40' : ''
+        }`}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <ReorderHandle listKey={listKey} idx={idx} count={items.length} />
+            <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">
+              Poster #{idx + 1}
+            </h4>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={it.hintEnabled !== false}
+                onChange={(e) => setPosterItemField(idx, 'hintEnabled', e.target.checked)}
+                className="accent-blue-600"
+              />
+              Blink pas mode Hint
+            </label>
+            <RemoveBtn onClick={() => removePosterItem(idx)} />
+          </div>
+        </div>
+        <input type="text" value={it.title} onChange={(e) => setPosterItemField(idx, 'title', e.target.value)} placeholder="Judul" className={inputClsSm} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <input type="text" value={it.category} onChange={(e) => setPosterItemField(idx, 'category', e.target.value)} placeholder="Kategori" className={inputClsSm} />
+          <input type="text" value={it.dimensions} onChange={(e) => setPosterItemField(idx, 'dimensions', e.target.value)} placeholder="Dimensi/Info (mis. 2400x3000px)" className={inputClsSm} />
+        </div>
+
+        <div className="flex items-center gap-2">
+          {it.imageUrl && (
+            <img src={it.imageUrl} alt={it.title} className="w-14 h-14 rounded object-cover border border-gray-300 dark:border-gray-600 shrink-0" />
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            disabled={uploadingGalleryImage === `${listKey}-${idx}`}
+            onChange={async (e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+              setUploadingGalleryImage(`${listKey}-${idx}`);
+              const url = await uploadImageToStorage(file);
+              setUploadingGalleryImage(null);
+              if (url) setPosterItemField(idx, 'imageUrl', url);
+              e.target.value = '';
+            }}
+            className="flex-1 text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/40 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/40 disabled:opacity-60"
+          />
+        </div>
+        <input type="text" value={it.imageUrl} onChange={(e) => setPosterItemField(idx, 'imageUrl', e.target.value)} placeholder="Atau tempel URL Gambar (dari galeri/hosting lain)" className={inputClsSm} />
+
+        <textarea rows={2} value={it.description} onChange={(e) => setPosterItemField(idx, 'description', e.target.value)} placeholder="Deskripsi singkat (penjelasan karya)" className={`${inputClsSm} resize-none`} />
+      </div>
+    );
+  };
+
+  // Blok form 1 Tab Tambahan (Custom Section) — label tab (bisa diedit/dihapus) + daftar
+  // kartu sederhana di dalamnya (judul, kategori, gambar, deskripsi, link opsional).
+  // Sama kayak renderPosterItem: fungsi biasa yang nge-return JSX, BUKAN komponen
+  // JSX tag, biar input gak kehilangan fokus tiap ngetik (lihat catatan di
+  // renderPosterItem soal kenapa ini penting).
+  //
+  // Beda dari renderPosterItem: gak ada collapse/expand di sini, soalnya
+  // masing-masing custom section UDAH dapet pill nav sendiri di atas (sejajar
+  // Articles/Poster) — jadi "buka" section ini ya klik pill-nya langsung, gak perlu
+  // tombol Edit/Tutup terpisah lagi kayak dulu waktu semua numpuk di 1 wrapper tab.
+  const renderCustomSectionBlock = (section, sectionIdx) => {
+    const items = section.items;
+    return (
+      <div key={section.id || sectionIdx} className="space-y-3">
         <div className="flex items-center gap-2">
           <input
             type="text"
-            value={subBab.name}
-            onChange={(e) => setSubBabName(subBabIdx, e.target.value)}
-            placeholder="Nama Sub Bab (mis. UI/UX Design, Branding, dst)"
+            value={section.label}
+            onChange={(e) => setCustomSectionLabel(sectionIdx, e.target.value)}
+            placeholder="Nama Tab (mis. Dummy Projects, Eksperimen, dst) — ini yang tampil di pill nav"
             className={`${inputClsSm} font-semibold flex-1`}
           />
-          <RemoveBtn onClick={() => removeSubBab(subBabIdx)} label="Hapus Sub Bab" />
+          <RemoveBtn onClick={() => removeCustomSection(sectionIdx)} label="Hapus Tab Ini" />
         </div>
 
         <div className="space-y-3 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-              Item Poster ({items.length})
+              Item ({items.length})
             </h4>
-            <AddBtn onClick={() => addPosterItem(subBabIdx)} label="Tambah Poster" />
+            <AddBtn onClick={() => addCustomItem(sectionIdx)} label="Tambah Item" />
           </div>
+
+          {items.length === 0 && (
+            <p className="text-[10px] text-gray-400 italic">Belum ada item.</p>
+          )}
 
           {items.map((it, idx) => (
             <div
               key={it.id || idx}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop(listKey, idx)}
-              className={`p-3 bg-white dark:bg-[#2d2d2d] rounded border border-gray-200 dark:border-gray-700 space-y-2 transition-opacity ${
-                draggingKey === `${listKey}-${idx}` ? 'opacity-40' : ''
-              }`}
+              className="p-3 bg-white dark:bg-[#2d2d2d] rounded border border-gray-200 dark:border-gray-700 space-y-2"
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <ReorderHandle listKey={listKey} idx={idx} count={items.length} />
-                  <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                    Poster #{idx + 1}
-                  </h4>
-                </div>
+                <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">Item #{idx + 1}</h4>
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={it.hintEnabled !== false}
-                      onChange={(e) => setPosterItemField(subBabIdx, idx, 'hintEnabled', e.target.checked)}
+                      onChange={(e) => setCustomItemField(sectionIdx, idx, 'hintEnabled', e.target.checked)}
                       className="accent-blue-600"
                     />
                     Blink pas mode Hint
                   </label>
-                  <RemoveBtn onClick={() => removePosterItem(subBabIdx, idx)} />
+                  <RemoveBtn onClick={() => removeCustomItem(sectionIdx, idx)} />
                 </div>
               </div>
-              <input type="text" value={it.title} onChange={(e) => setPosterItemField(subBabIdx, idx, 'title', e.target.value)} placeholder="Judul" className={inputClsSm} />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <input type="text" value={it.category} onChange={(e) => setPosterItemField(subBabIdx, idx, 'category', e.target.value)} placeholder="Kategori" className={inputClsSm} />
-                <input type="text" value={it.dimensions} onChange={(e) => setPosterItemField(subBabIdx, idx, 'dimensions', e.target.value)} placeholder="Dimensi/Info (mis. 2400x3000px)" className={inputClsSm} />
-              </div>
+              <input type="text" value={it.title} onChange={(e) => setCustomItemField(sectionIdx, idx, 'title', e.target.value)} placeholder="Judul" className={inputClsSm} />
+              <input type="text" value={it.category} onChange={(e) => setCustomItemField(sectionIdx, idx, 'category', e.target.value)} placeholder="Kategori (opsional)" className={inputClsSm} />
 
               <div className="flex items-center gap-2">
                 {it.imageUrl && (
@@ -711,22 +948,23 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                 <input
                   type="file"
                   accept="image/*"
-                  disabled={uploadingGalleryImage === `${listKey}-${idx}`}
+                  disabled={uploadingCustomImage === `${sectionIdx}-${idx}`}
                   onChange={async (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
-                    setUploadingGalleryImage(`${listKey}-${idx}`);
+                    setUploadingCustomImage(`${sectionIdx}-${idx}`);
                     const url = await uploadImageToStorage(file);
-                    setUploadingGalleryImage(null);
-                    if (url) setPosterItemField(subBabIdx, idx, 'imageUrl', url);
+                    setUploadingCustomImage(null);
+                    if (url) setCustomItemField(sectionIdx, idx, 'imageUrl', url);
                     e.target.value = '';
                   }}
                   className="flex-1 text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/40 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/40 disabled:opacity-60"
                 />
               </div>
-              <input type="text" value={it.imageUrl} onChange={(e) => setPosterItemField(subBabIdx, idx, 'imageUrl', e.target.value)} placeholder="Atau tempel URL Gambar (dari galeri/hosting lain)" className={inputClsSm} />
+              <input type="text" value={it.imageUrl} onChange={(e) => setCustomItemField(sectionIdx, idx, 'imageUrl', e.target.value)} placeholder="Atau tempel URL Gambar" className={inputClsSm} />
 
-              <textarea rows={2} value={it.description} onChange={(e) => setPosterItemField(subBabIdx, idx, 'description', e.target.value)} placeholder="Deskripsi singkat (penjelasan karya)" className={`${inputClsSm} resize-none`} />
+              <textarea rows={2} value={it.description} onChange={(e) => setCustomItemField(sectionIdx, idx, 'description', e.target.value)} placeholder="Deskripsi singkat" className={`${inputClsSm} resize-none`} />
+              <input type="text" value={it.url} onChange={(e) => setCustomItemField(sectionIdx, idx, 'url', e.target.value)} placeholder="Link tombol 'Lihat' (opsional)" className={inputClsSm} />
             </div>
           ))}
         </div>
@@ -919,7 +1157,11 @@ export default function CmsDashboard({ data, onSave, onClose }) {
         {activeTab === 'career' && (
           <div className="space-y-6">
             <h2 className="text-sm font-bold border-b pb-2 border-gray-100 dark:border-gray-800 text-blue-600 dark:text-blue-400">Tab Career</h2>
-            <p className="text-xs text-gray-500 italic">Setiap item riwayat dilengkapi pop-up detail instansi (nama, alamat, foto, deskripsi).</p>
+            <p className="text-xs text-gray-500 italic">
+              Kategori di bawah bebas ditambah, dihapus, atau diganti namanya — cocok buat
+              riwayat kerja/pendidikan, tapi juga bisa dipakai buat Achievements, Certificates,
+              atau slot lain yang lo butuhin.
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Field label="Judul Halaman (mis. Career & Education)">
@@ -930,118 +1172,362 @@ export default function CmsDashboard({ data, onSave, onClose }) {
               </Field>
             </div>
 
-            {CAREER_CATEGORIES.map((category) => (
-              <div key={category} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">{category}</h3>
-                  <AddBtn onClick={() => addCareerItem(category)} label="Tambah Item" />
-                </div>
+            {formData.career.categories.length === 0 && (
+              <p className="text-[11px] text-gray-400 italic">Belum ada kategori. Tambah salah satu tipe di bawah buat mulai.</p>
+            )}
 
-                {/* Gambar latar kartu menu (School/College/Professional) di halaman publik */}
-                <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded border border-dashed border-blue-200 dark:border-blue-900 space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">Gambar Latar Kartu Menu "{category}"</span>
-                  <div className="flex items-center gap-3">
-                    {formData.career[category].bgImage && (
-                      <img src={formData.career[category].bgImage} alt={category} className="w-16 h-12 rounded object-cover border border-gray-300 dark:border-gray-600 shrink-0" />
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      disabled={uploadingCareerBg === category}
-                      onChange={async (e) => {
-                        const file = e.target.files[0];
-                        if (!file) return;
-                        setUploadingCareerBg(category);
-                        const url = await uploadImageToStorage(file);
-                        setUploadingCareerBg(null);
-                        if (url) setCareerBgImage(category, url);
-                        e.target.value = '';
-                      }}
-                      className="flex-1 text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/40 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/40 disabled:opacity-60"
-                    />
-                    {formData.career[category].bgImage && (
-                      <button type="button" onClick={() => setCareerBgImage(category, '')} className="text-[10px] text-red-500 hover:text-red-600 font-semibold shrink-0">
-                        Hapus
+            {/* Pola tab pill: cuma 1 kategori yang keliatan isinya dalam satu waktu (Professional
+                ATAU College ATAU dst), sisanya ngumpet di balik pill-nya — sama kayak sub-tab
+                Articles/Poster di tab Projects. Ini yang bikin CMS gak numpuk-panjang kalau
+                kategorinya banyak. */}
+            {formData.career.categories.length > 0 && (() => {
+              const foundIdx = formData.career.categories.findIndex((c) => c.id === activeCareerCategory);
+              const catIdx = foundIdx === -1 ? 0 : foundIdx;
+              const category = formData.career.categories[catIdx];
+              const bgKey = category.id || catIdx;
+              const isCredential = category.type === 'credential';
+              const listKey = `career:${catIdx}`;
+
+              return (
+                <>
+                  <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 pb-3 flex-wrap items-center">
+                    {formData.career.categories.map((cat, idx) => (
+                      <button
+                        key={cat.id || idx}
+                        type="button"
+                        onClick={() => setActiveCareerCategory(cat.id)}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
+                          catIdx === idx
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'bg-gray-100 dark:bg-[#2d2d2d] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#383838]'
+                        }`}
+                      >
+                        {cat.name || `Kategori #${idx + 1}`} ({cat.items.length})
                       </button>
-                    )}
+                    ))}
                   </div>
-                  {uploadingCareerBg === category && (
-                    <p className="text-[10px] text-blue-500 animate-pulse">Mengupload gambar...</p>
-                  )}
-                  <input
-                    type="text"
-                    value={formData.career[category].bgImage}
-                    onChange={(e) => setCareerBgImage(category, e.target.value)}
-                    placeholder="Atau tempel URL gambar langsung di sini"
-                    className={inputClsSm}
-                  />
-                  <p className="text-[10px] text-gray-400">Kosongkan aja kalau belum ada — nanti otomatis pakai warna gradasi default.</p>
-                </div>
 
-                {formData.career[category].items.length === 0 && (
-                  <p className="text-[11px] text-gray-400 italic">Belum ada item.</p>
-                )}
+                  <div key={category.id || catIdx} className="space-y-3 p-4 rounded-lg border-2 border-gray-100 dark:border-gray-800">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                      <input
+                        type="text"
+                        value={category.name}
+                        onChange={(e) => setCareerCategoryName(catIdx, e.target.value)}
+                        placeholder="Nama Kategori (mis. Professional, Achievements, dst)"
+                        className={`${inputClsSm} font-semibold flex-1`}
+                      />
+                      <select
+                        value={category.type}
+                        onChange={(e) => setCareerCategoryType(catIdx, e.target.value)}
+                        className={`${inputClsSm} sm:w-56 shrink-0`}
+                      >
+                        <option value="career">{CAREER_TYPE_LABEL.career}</option>
+                        <option value="credential">{CAREER_TYPE_LABEL.credential}</option>
+                      </select>
+                      <RemoveBtn onClick={() => removeCareerCategory(catIdx)} label="Hapus Kategori" />
+                    </div>
 
-                {formData.career[category].items.map((item, idx) => (
-                  <div key={item.id || idx} className="p-4 bg-gray-50 dark:bg-[#2d2d2d] rounded border border-gray-200 dark:border-gray-700 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">Item #{idx + 1}</h4>
+                      <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                        {category.items.length} item — seret ⠿ atau pakai ▲▼ buat urutin
+                      </h3>
+                      <AddBtn onClick={() => addCareerItem(catIdx)} label="Tambah Item" />
+                    </div>
+
+                    {/* Gambar latar kartu menu kategori ini di halaman publik */}
+                    <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded border border-dashed border-blue-200 dark:border-blue-900 space-y-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">
+                        Gambar Latar Kartu Menu "{category.name || 'Tanpa Nama'}"
+                      </span>
                       <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={item.hintEnabled !== false}
-                            onChange={(e) => setCareerItemField(category, idx, 'hintEnabled', e.target.checked)}
-                            className="accent-blue-600"
-                          />
-                          Blink pas mode Hint
-                        </label>
-                        <RemoveBtn onClick={() => removeCareerItem(category, idx)} label="Hapus Item" />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <input type="text" value={item.role} onChange={(e) => setCareerItemField(category, idx, 'role', e.target.value)} placeholder="Posisi / Peran" className={inputClsSm} />
-                      <input type="text" value={item.company} onChange={(e) => setCareerItemField(category, idx, 'company', e.target.value)} placeholder="Nama Instansi / Perusahaan" className={inputClsSm} />
-                      <input type="text" value={item.location} onChange={(e) => setCareerItemField(category, idx, 'location', e.target.value)} placeholder="Lokasi" className={inputClsSm} />
-                      <input type="text" value={item.period} onChange={(e) => setCareerItemField(category, idx, 'period', e.target.value)} placeholder="Periode (mis. 2024 – Present)" className={inputClsSm} />
-                    </div>
-                    <textarea rows={2} value={item.description} onChange={(e) => setCareerItemField(category, idx, 'description', e.target.value)} placeholder="Deskripsi singkat" className={`${inputClsSm} resize-none`} />
-
-                    <div className="p-3 bg-white dark:bg-[#1e1e1e] rounded border border-dashed border-gray-300 dark:border-gray-600 space-y-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">Pop-up Detail Instansi</span>
-                      <input type="text" value={item.companyInfo.name} onChange={(e) => setCareerCompanyInfoField(category, idx, 'name', e.target.value)} placeholder="Nama Lengkap Instansi" className={inputClsSm} />
-                      <input type="text" value={item.companyInfo.address} onChange={(e) => setCareerCompanyInfoField(category, idx, 'address', e.target.value)} placeholder="Alamat Instansi" className={inputClsSm} />
-
-                      <div className="flex items-center gap-2">
-                        {item.companyInfo.photo && (
-                          <img src={item.companyInfo.photo} alt={item.companyInfo.name} className="w-10 h-10 rounded object-cover border border-gray-300 dark:border-gray-600 shrink-0" />
+                        {category.bgImage && (
+                          <img src={category.bgImage} alt={category.name} className="w-16 h-12 rounded object-cover border border-gray-300 dark:border-gray-600 shrink-0" />
                         )}
                         <input
                           type="file"
                           accept="image/*"
-                          disabled={uploadingCompanyPhoto === `${category}-${idx}`}
+                          disabled={uploadingCareerBg === bgKey}
                           onChange={async (e) => {
                             const file = e.target.files[0];
                             if (!file) return;
-                            const key = `${category}-${idx}`;
-                            setUploadingCompanyPhoto(key);
+                            setUploadingCareerBg(bgKey);
                             const url = await uploadImageToStorage(file);
-                            setUploadingCompanyPhoto(null);
-                            if (url) setCareerCompanyInfoField(category, idx, 'photo', url);
+                            setUploadingCareerBg(null);
+                            if (url) setCareerBgImage(catIdx, url);
                             e.target.value = '';
                           }}
-                          className="flex-1 text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/40 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/40 disabled:opacity-60"
+                          className="flex-1 text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/40 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/40 disabled:opacity-60"
                         />
+                        {category.bgImage && (
+                          <button type="button" onClick={() => setCareerBgImage(catIdx, '')} className="text-[10px] text-red-500 hover:text-red-600 font-semibold shrink-0">
+                            Hapus
+                          </button>
+                        )}
                       </div>
-                      <input type="text" value={item.companyInfo.photo} onChange={(e) => setCareerCompanyInfoField(category, idx, 'photo', e.target.value)} placeholder="Atau tempel URL Foto Instansi" className={inputClsSm} />
-
-                      <textarea rows={2} value={item.companyInfo.about} onChange={(e) => setCareerCompanyInfoField(category, idx, 'about', e.target.value)} placeholder="Deskripsi Singkat Instansi" className={`${inputClsSm} resize-none`} />
+                      {uploadingCareerBg === bgKey && (
+                        <p className="text-[10px] text-blue-500 animate-pulse">Mengupload gambar...</p>
+                      )}
+                      <input
+                        type="text"
+                        value={category.bgImage}
+                        onChange={(e) => setCareerBgImage(catIdx, e.target.value)}
+                        placeholder="Atau tempel URL gambar langsung di sini"
+                        className={inputClsSm}
+                      />
+                      <p className="text-[10px] text-gray-400">Kosongkan aja kalau belum ada — nanti otomatis pakai warna gradasi default.</p>
                     </div>
+
+                    {category.items.length === 0 && (
+                      <p className="text-[11px] text-gray-400 italic">Belum ada item.</p>
+                    )}
+
+                    {/* -------- Item TIPE 'career': Posisi @ Instansi + pop-up detail instansi -------- */}
+                    {/* Collapsed by default (cuma judul + tombol Edit) — sama pola kayak Articles di
+                        tab Projects, biar kategori yang isinya banyak item (Professional, College, dst)
+                        gak numpuk-panjang sekaligus di layar. Klik "Edit" buat buka form lengkapnya.
+                        ReorderHandle (⠿ / ▲ / ▼) dipasang di kedua mode (collapsed & expanded) buat
+                        geser urutan item — misal item yang baru diupdate mau ditaruh paling atas. */}
+                    {!isCredential && category.items.map((item, idx) => {
+                      const itemKey = `${catIdx}-${idx}`;
+                      const isOpen = expandedCareerKey === itemKey;
+
+                      if (!isOpen) {
+                        return (
+                          <div
+                            key={item.id || idx}
+                            onDragOver={handleDragOver}
+                            onDrop={handleDrop(listKey, idx)}
+                            className={`flex items-center gap-2 p-3 bg-gray-50 dark:bg-[#2d2d2d] rounded border border-gray-200 dark:border-gray-700 transition-opacity ${
+                              draggingKey === `${listKey}-${idx}` ? 'opacity-40' : ''
+                            }`}
+                          >
+                            <ReorderHandle listKey={listKey} idx={idx} count={category.items.length} />
+                            <button
+                              type="button"
+                              onClick={() => setExpandedCareerKey(itemKey)}
+                              className="flex-1 min-w-0 text-left"
+                            >
+                              <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                {item.role || <span className="italic text-gray-400 font-normal">Item #{idx + 1} — belum ada judul</span>}
+                              </span>
+                              {(item.company || item.period) && (
+                                <span className="block text-[10px] font-mono text-gray-400 mt-0.5 truncate">
+                                  {[item.company, item.period].filter(Boolean).join(' · ')}
+                                </span>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedCareerKey(itemKey)}
+                              className="text-[10px] px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 rounded font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 shrink-0"
+                            >
+                              Edit
+                            </button>
+                            <RemoveBtn onClick={() => removeCareerItem(catIdx, idx)} />
+                          </div>
+                        );
+                      }
+
+                      return (
+                      <div
+                        key={item.id || idx}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop(listKey, idx)}
+                        className={`p-4 bg-gray-50 dark:bg-[#2d2d2d] rounded border border-blue-300 dark:border-blue-700 space-y-3 transition-opacity ${
+                          draggingKey === `${listKey}-${idx}` ? 'opacity-40' : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <ReorderHandle listKey={listKey} idx={idx} count={category.items.length} />
+                            <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">Item #{idx + 1}</h4>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={item.hintEnabled !== false}
+                                onChange={(e) => setCareerItemField(catIdx, idx, 'hintEnabled', e.target.checked)}
+                                className="accent-blue-600"
+                              />
+                              Blink pas mode Hint
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedCareerKey(null)}
+                              className="text-[10px] px-2.5 py-1 bg-gray-200 dark:bg-[#3a3a3a] text-gray-600 dark:text-gray-300 rounded font-semibold hover:bg-gray-300 dark:hover:bg-[#454545]"
+                            >
+                              Tutup
+                            </button>
+                            <RemoveBtn onClick={() => removeCareerItem(catIdx, idx)} label="Hapus Item" />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <input type="text" value={item.role} onChange={(e) => setCareerItemField(catIdx, idx, 'role', e.target.value)} placeholder="Posisi / Peran" className={inputClsSm} />
+                          <input type="text" value={item.company} onChange={(e) => setCareerItemField(catIdx, idx, 'company', e.target.value)} placeholder="Nama Instansi / Perusahaan" className={inputClsSm} />
+                          <input type="text" value={item.location} onChange={(e) => setCareerItemField(catIdx, idx, 'location', e.target.value)} placeholder="Lokasi" className={inputClsSm} />
+                          <input type="text" value={item.period} onChange={(e) => setCareerItemField(catIdx, idx, 'period', e.target.value)} placeholder="Periode (mis. 2024 – Present)" className={inputClsSm} />
+                        </div>
+                        <textarea rows={2} value={item.description} onChange={(e) => setCareerItemField(catIdx, idx, 'description', e.target.value)} placeholder="Deskripsi singkat" className={`${inputClsSm} resize-none`} />
+
+                        <div className="p-3 bg-white dark:bg-[#1e1e1e] rounded border border-dashed border-gray-300 dark:border-gray-600 space-y-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">Pop-up Detail Instansi</span>
+                          <input type="text" value={item.companyInfo.name} onChange={(e) => setCareerCompanyInfoField(catIdx, idx, 'name', e.target.value)} placeholder="Nama Lengkap Instansi" className={inputClsSm} />
+                          <input type="text" value={item.companyInfo.address} onChange={(e) => setCareerCompanyInfoField(catIdx, idx, 'address', e.target.value)} placeholder="Alamat Instansi" className={inputClsSm} />
+
+                          <div className="flex items-center gap-2">
+                            {item.companyInfo.photo && (
+                              <img src={item.companyInfo.photo} alt={item.companyInfo.name} className="w-10 h-10 rounded object-cover border border-gray-300 dark:border-gray-600 shrink-0" />
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              disabled={uploadingCompanyPhoto === `${catIdx}-${idx}`}
+                              onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (!file) return;
+                                const key = `${catIdx}-${idx}`;
+                                setUploadingCompanyPhoto(key);
+                                const url = await uploadImageToStorage(file);
+                                setUploadingCompanyPhoto(null);
+                                if (url) setCareerCompanyInfoField(catIdx, idx, 'photo', url);
+                                e.target.value = '';
+                              }}
+                              className="flex-1 text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/40 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/40 disabled:opacity-60"
+                            />
+                          </div>
+                          <input type="text" value={item.companyInfo.photo} onChange={(e) => setCareerCompanyInfoField(catIdx, idx, 'photo', e.target.value)} placeholder="Atau tempel URL Foto Instansi" className={inputClsSm} />
+
+                          <textarea rows={2} value={item.companyInfo.about} onChange={(e) => setCareerCompanyInfoField(catIdx, idx, 'about', e.target.value)} placeholder="Deskripsi Singkat Instansi" className={`${inputClsSm} resize-none`} />
+                        </div>
+                      </div>
+                      );
+                    })}
+
+                    {/* -------- Item TIPE 'credential': nama pencapaian/sertifikat, penyelenggara, tanggal, bukti -------- */}
+                    {/* Sama pola collapsed/expand + reorder kayak tipe 'career' di atas. */}
+                    {isCredential && category.items.map((item, idx) => {
+                      const itemKey = `${catIdx}-${idx}`;
+                      const isOpen = expandedCareerKey === itemKey;
+
+                      if (!isOpen) {
+                        return (
+                          <div
+                            key={item.id || idx}
+                            onDragOver={handleDragOver}
+                            onDrop={handleDrop(listKey, idx)}
+                            className={`flex items-center gap-2 p-3 bg-gray-50 dark:bg-[#2d2d2d] rounded border border-gray-200 dark:border-gray-700 transition-opacity ${
+                              draggingKey === `${listKey}-${idx}` ? 'opacity-40' : ''
+                            }`}
+                          >
+                            <ReorderHandle listKey={listKey} idx={idx} count={category.items.length} />
+                            <button
+                              type="button"
+                              onClick={() => setExpandedCareerKey(itemKey)}
+                              className="flex-1 min-w-0 text-left"
+                            >
+                              <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                {item.title || <span className="italic text-gray-400 font-normal">Item #{idx + 1} — belum ada judul</span>}
+                              </span>
+                              {(item.issuer || item.date) && (
+                                <span className="block text-[10px] font-mono text-gray-400 mt-0.5 truncate">
+                                  {[item.issuer, item.date].filter(Boolean).join(' · ')}
+                                </span>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedCareerKey(itemKey)}
+                              className="text-[10px] px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 rounded font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 shrink-0"
+                            >
+                              Edit
+                            </button>
+                            <RemoveBtn onClick={() => removeCareerItem(catIdx, idx)} />
+                          </div>
+                        );
+                      }
+
+                      return (
+                      <div
+                        key={item.id || idx}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop(listKey, idx)}
+                        className={`p-4 bg-gray-50 dark:bg-[#2d2d2d] rounded border border-blue-300 dark:border-blue-700 space-y-3 transition-opacity ${
+                          draggingKey === `${listKey}-${idx}` ? 'opacity-40' : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <ReorderHandle listKey={listKey} idx={idx} count={category.items.length} />
+                            <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">Item #{idx + 1}</h4>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={item.hintEnabled !== false}
+                                onChange={(e) => setCareerItemField(catIdx, idx, 'hintEnabled', e.target.checked)}
+                                className="accent-blue-600"
+                              />
+                              Blink pas mode Hint
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedCareerKey(null)}
+                              className="text-[10px] px-2.5 py-1 bg-gray-200 dark:bg-[#3a3a3a] text-gray-600 dark:text-gray-300 rounded font-semibold hover:bg-gray-300 dark:hover:bg-[#454545]"
+                            >
+                              Tutup
+                            </button>
+                            <RemoveBtn onClick={() => removeCareerItem(catIdx, idx)} label="Hapus Item" />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <input type="text" value={item.title} onChange={(e) => setCareerItemField(catIdx, idx, 'title', e.target.value)} placeholder="Nama Pencapaian / Sertifikat" className={inputClsSm} />
+                          <input type="text" value={item.issuer} onChange={(e) => setCareerItemField(catIdx, idx, 'issuer', e.target.value)} placeholder="Penyelenggara / Penerbit" className={inputClsSm} />
+                          <input type="text" value={item.date} onChange={(e) => setCareerItemField(catIdx, idx, 'date', e.target.value)} placeholder="Tanggal (mis. Mei 2026)" className={inputClsSm} />
+                          <input type="text" value={item.verifyUrl} onChange={(e) => setCareerItemField(catIdx, idx, 'verifyUrl', e.target.value)} placeholder="Link Verifikasi / Bukti (opsional)" className={inputClsSm} />
+                        </div>
+                        <textarea rows={2} value={item.description} onChange={(e) => setCareerItemField(catIdx, idx, 'description', e.target.value)} placeholder="Deskripsi singkat (opsional)" className={`${inputClsSm} resize-none`} />
+
+                        <div className="p-3 bg-white dark:bg-[#1e1e1e] rounded border border-dashed border-gray-300 dark:border-gray-600 space-y-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">Gambar Bukti (sertifikat/foto pencapaian)</span>
+                          <div className="flex items-center gap-2">
+                            {item.image && (
+                              <img src={item.image} alt={item.title} className="w-14 h-14 rounded object-cover border border-gray-300 dark:border-gray-600 shrink-0" />
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              disabled={uploadingCompanyPhoto === `${catIdx}-${idx}`}
+                              onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (!file) return;
+                                const key = `${catIdx}-${idx}`;
+                                setUploadingCompanyPhoto(key);
+                                const url = await uploadImageToStorage(file);
+                                setUploadingCompanyPhoto(null);
+                                if (url) setCareerItemField(catIdx, idx, 'image', url);
+                                e.target.value = '';
+                              }}
+                              className="flex-1 text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/40 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/40 disabled:opacity-60"
+                            />
+                          </div>
+                          <input type="text" value={item.image} onChange={(e) => setCareerItemField(catIdx, idx, 'image', e.target.value)} placeholder="Atau tempel URL Gambar" className={inputClsSm} />
+                        </div>
+                      </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            ))}
+                </>
+              );
+            })()}
+
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <AddBtn onClick={() => addCareerCategory('career')} label="Tambah Kategori Riwayat" />
+              <AddBtn onClick={() => addCareerCategory('credential')} label="Tambah Kategori Pencapaian/Sertifikat" />
+            </div>
           </div>
         )}
 
@@ -1162,21 +1648,106 @@ export default function CmsDashboard({ data, onSave, onClose }) {
               <textarea rows={2} value={formData.projects.subheading} onChange={(e) => setProjectsField('subheading', e.target.value)} className={`${inputCls} resize-none`} />
             </Field>
 
+            {/* Sub-tab: Articles / Poster / tiap Tab Tambahan dapet pill nama sendiri —
+                sama kayak Articles & Poster, mirroring nav di halaman publiknya sendiri.
+                "+ Tambah Tab" nempel di ujung, klik langsung bikin tab baru & pindah ke situ. */}
+            <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 pb-3 flex-wrap items-center">
+              {[
+                { key: 'articles', label: `Articles (${formData.projects.articles.length})` },
+                { key: 'poster', label: `Poster (${formData.projects.poster.items.length})` },
+                ...formData.projects.customSections.map((cs, idx) => ({
+                  key: `custom:${cs.id}`,
+                  label: cs.label || `Tab Baru #${idx + 1}`,
+                })),
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setActiveProjectsSubTab(t.key)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
+                    activeProjectsSubTab === t.key
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-gray-100 dark:bg-[#2d2d2d] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#383838]'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={addCustomSection}
+                title="Tambah tab baru di luar Articles & Poster"
+                className="px-3 py-1.5 text-xs font-semibold rounded border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                + Tambah Tab
+              </button>
+            </div>
+
             {/* ARTICLES — gaya portal berita, artikel pertama otomatis jadi unggulan */}
+            {activeProjectsSubTab === 'articles' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Articles</h3>
                 <AddBtn onClick={addArticle} label="Tambah Artikel" />
               </div>
+              <Field label='Nama Tab (tampil di navigasi, kosongkan buat pakai "Articles")'>
+                <input
+                  type="text"
+                  value={formData.projects.articlesLabel}
+                  onChange={(e) => setProjectsField('articlesLabel', e.target.value)}
+                  placeholder="Articles"
+                  className={inputClsSm}
+                />
+              </Field>
               <p className="text-[10px] text-gray-400 -mt-1">
                 Artikel #1 di daftar bakal tampil besar sebagai artikel unggulan di halaman publik, sisanya jadi daftar kecil di sampingnya. Urutan bisa diatur dengan menyusun ulang artikel di sini.
               </p>
-              {formData.projects.articles.map((art, idx) => (
+              {formData.projects.articles.map((art, idx) => {
+                const isOpen = expandedArticleIdx === idx;
+                if (!isOpen) {
+                  // ---------- BARIS COLLAPSED: judul + tanggal + tombol Edit doang ----------
+                  return (
+                    <div
+                      key={art.id || idx}
+                      onDragOver={handleDragOver}
+                      onDrop={handleDrop('articles', idx)}
+                      className={`flex items-center gap-2 p-3 bg-gray-50 dark:bg-[#2d2d2d] rounded border border-gray-200 dark:border-gray-700 transition-opacity ${
+                        draggingKey === `articles-${idx}` ? 'opacity-40' : ''
+                      }`}
+                    >
+                      <ReorderHandle listKey="articles" idx={idx} count={formData.projects.articles.length} />
+                      <button
+                        type="button"
+                        onClick={() => setExpandedArticleIdx(idx)}
+                        className="flex-1 min-w-0 text-left"
+                      >
+                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                          {idx === 0 && <span className="text-blue-500 mr-1">(Unggulan)</span>}
+                          {art.title || <span className="italic text-gray-400 font-normal">Artikel #{idx + 1} — belum ada judul</span>}
+                        </span>
+                        {art.date && (
+                          <span className="block text-[10px] font-mono text-gray-400 mt-0.5">{art.date}</span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedArticleIdx(idx)}
+                        className="text-[10px] px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 rounded font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 shrink-0"
+                      >
+                        Edit
+                      </button>
+                      <RemoveBtn onClick={() => removeArticle(idx)} />
+                    </div>
+                  );
+                }
+
+                // ---------- BARIS EXPANDED: form lengkap 1 artikel ----------
+                return (
                 <div
                   key={art.id || idx}
                   onDragOver={handleDragOver}
                   onDrop={handleDrop('articles', idx)}
-                  className={`p-4 bg-gray-50 dark:bg-[#2d2d2d] rounded border border-gray-200 dark:border-gray-700 space-y-2 transition-opacity ${
+                  className={`p-4 bg-gray-50 dark:bg-[#2d2d2d] rounded border border-blue-300 dark:border-blue-700 space-y-2 transition-opacity ${
                     draggingKey === `articles-${idx}` ? 'opacity-40' : ''
                   }`}
                 >
@@ -1197,6 +1768,13 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                         />
                         Blink pas mode Hint
                       </label>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedArticleIdx(null)}
+                        className="text-[10px] px-2.5 py-1 bg-gray-200 dark:bg-[#3a3a3a] text-gray-600 dark:text-gray-300 rounded font-semibold hover:bg-gray-300 dark:hover:bg-[#454545]"
+                      >
+                        Tutup
+                      </button>
                       <RemoveBtn onClick={() => removeArticle(idx)} />
                     </div>
                   </div>
@@ -1241,25 +1819,50 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                     />
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
+            )}
 
-            {/* POSTER — dikelompokkan per Sub Bab, tiap sub bab bisa ditambah/dihapus bebas */}
+            {/* POSTER — daftar file langsung, klik "Tambah Poster" langsung nambah item baru */}
+            {activeProjectsSubTab === 'poster' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Poster</h3>
-                <AddBtn onClick={addSubBab} label="Tambah Sub Bab" />
+                <AddBtn onClick={addPosterItem} label="Tambah Poster" />
               </div>
-              <p className="text-[10px] text-gray-400 -mt-1">
-                Sub Bab itu semacam folder buat ngelompokin poster (mis. "UI/UX Design", "Branding"). Di halaman publik, pengunjung pilih sub bab dulu baru lihat poster di dalamnya.
-              </p>
-              {formData.projects.poster.subBabs.length === 0 && (
-                <p className="text-[10px] text-gray-400 italic">Belum ada sub bab. Klik "+ Tambah Sub Bab" buat mulai.</p>
+              <Field label='Nama Tab (tampil di navigasi, kosongkan buat pakai "Poster")'>
+                <input
+                  type="text"
+                  value={formData.projects.posterLabel}
+                  onChange={(e) => setProjectsField('posterLabel', e.target.value)}
+                  placeholder="Poster"
+                  className={inputClsSm}
+                />
+              </Field>
+              {formData.projects.poster.items.length === 0 && (
+                <p className="text-[10px] text-gray-400 italic">Belum ada poster. Klik "+ Tambah Poster" buat mulai.</p>
               )}
-              {formData.projects.poster.subBabs.map((sb, subBabIdx) => (
-                <PosterSubBabSection key={sb.id || subBabIdx} subBab={sb} subBabIdx={subBabIdx} />
-              ))}
+              {formData.projects.poster.items.map((it, idx) =>
+                renderPosterItem(it, idx, formData.projects.poster.items)
+              )}
             </div>
+            )}
+
+            {/* TAB TAMBAHAN — tiap custom section udah dapet pill nav sendiri di atas
+                (sejajar Articles/Poster), jadi di sini cuma render section yang lagi
+                aktif aja (dicari lewat activeProjectsSubTab = "custom:<id>"). */}
+            {activeProjectsSubTab.startsWith('custom:') && (() => {
+              const sectionIdx = formData.projects.customSections.findIndex(
+                (cs) => `custom:${cs.id}` === activeProjectsSubTab
+              );
+              if (sectionIdx === -1) return null;
+              return (
+                <div className="space-y-3">
+                  {renderCustomSectionBlock(formData.projects.customSections[sectionIdx], sectionIdx)}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1293,6 +1896,18 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                 <input type="text" value={formData.contact.collabButtonUrl} onChange={(e) => setContactField('collabButtonUrl', e.target.value)} className={inputCls} />
               </Field>
             </div>
+            <Field label="Isi Pesan / Body Email (opsional, khusus kalau Link di atas alamat email)">
+              <textarea
+                rows={3}
+                value={formData.contact.collabButtonBody || ''}
+                onChange={(e) => setContactField('collabButtonBody', e.target.value)}
+                placeholder={'Halo, saya tertarik untuk berkolaborasi mengenai...'}
+                className={`${inputCls} resize-none`}
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                Diisi otomatis ke email pas tombol diklik, biar pengunjung tinggal edit dikit terus kirim — gak perlu ngetik dari nol.
+              </p>
+            </Field>
 
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -1357,6 +1972,13 @@ export default function CmsDashboard({ data, onSave, onClose }) {
                         </a>
                       )}
                     </div>
+                    <textarea
+                      rows={2}
+                      value={btn.body || ''}
+                      onChange={(e) => setActionButtonField(idx, 'body', e.target.value)}
+                      placeholder="Isi Pesan / Body Email (opsional, khusus kalau Link di atas alamat email)"
+                      className={`${inputClsSm} resize-none`}
+                    />
                   </div>
                 ))}
               </div>

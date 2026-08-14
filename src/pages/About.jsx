@@ -17,11 +17,14 @@ export default function About({ data }) {
   const content = data || {};
 
   return (
-    <div className="w-full flex flex-col items-center justify-center text-left py-16 px-4 sm:px-8 select-text">
-      {/* Dikotakin dalam 1 card solid — biar teks watermark di belakang (WatermarkBackground)
-          gak numpuk/nembus ke area baca. Card ini punya background sendiri (opaque),
-          jadi apapun yang ada di belakangnya otomatis ketutup rapi. */}
-      <div className="relative z-10 w-full max-w-2xl bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm px-5 sm:px-8">
+    // min-h ngedorong konten bener-bener ke tengah TINGGI halaman (bukan cuma
+    // nempel di atas dikasih padding kayak sebelumnya) — dipasang di wrapper
+    // paling luar biar kerasa "centered" walau isinya lagi ketutup semua.
+    // Kotak solid (bg-white/border/shadow) udah DILEPAS — dulu itu cuma buat
+    // nutupin WatermarkBackground di belakangnya, tapi Watermark sekarang
+    // sudah dibatasin cuma nongol di tab Home doang, jadi udah gak perlu lagi.
+    <div className="w-full min-h-[65vh] flex flex-col items-center justify-center text-left py-10 px-4 sm:px-8 select-text">
+      <div className="relative z-10 w-full max-w-2xl">
         {SECTIONS.map(({ key, label }, idx) => {
         const isOpen = openSection === key;
         const text = content[key];

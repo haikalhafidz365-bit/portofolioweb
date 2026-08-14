@@ -7,10 +7,31 @@ export default function Projects({ data, initialArticleId }) {
     projectsData.subheading ||
     'Kumpulan karya tulis artikel bergaya portal berita dan galeri poster pilihan.';
   const articles = projectsData.articles || [];
-  const subBabs = projectsData.poster?.subBabs || [];
+  const posterItems = projectsData.poster?.items || [];
+  // Tab tambahan bebas (di luar Articles & Poster) — dibikin dari CMS, bisa berapa
+  // aja jumlahnya, tiap tab punya nama + daftar kartu sendiri (judul, gambar,
+  // kategori, deskripsi, link opsional).
+  const customSections = projectsData.customSections || [];
+  // Label tab navigasi buat Articles & Poster — bisa diganti bebas lewat CMS, kosong
+  // berarti pakai nama bawaan.
+  const articlesLabel = projectsData.articlesLabel || 'Articles';
+  const posterLabel = projectsData.posterLabel || 'Poster';
 
-  // Menu utama: 'articles' (tulisan) atau 'poster' (poster yang dikelompokkan per Sub Bab)
+  // Semua tab navigasi jadi 1 daftar: Articles & Poster bawaan, diikuti tab tambahan
+  // apa pun yang ditambah lewat CMS (jumlahnya bebas, gak dibatasin cuma 2).
+  const navTabs = [
+    { key: 'articles', label: articlesLabel },
+    { key: 'poster', label: posterLabel },
+    ...customSections.map((cs) => ({ key: `custom:${cs.id}`, label: cs.label || 'Tanpa Nama' })),
+  ];
+
+  // Menu utama: 'articles', 'poster', atau 'custom:<id>' buat tiap tab tambahan
   const [activeCategory, setActiveCategory] = useState('articles');
+  const activeCustomSection =
+    activeCategory.startsWith('custom:')
+      ? customSections.find((cs) => `custom:${cs.id}` === activeCategory)
+      : null;
+  const activeCustomItems = activeCustomSection?.items || [];
 
   // Artikel yang lagi dibaca penuh (null = masih di daftar/mode Mojok)
   const [selectedArticle, setSelectedArticle] = useState(null);
@@ -18,10 +39,10 @@ export default function Projects({ data, initialArticleId }) {
   const [shareArticle, setShareArticle] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  // Sub bab Poster yang lagi dibuka (null = masih di layar menu pilih Sub Bab)
-  const [selectedSubBabId, setSelectedSubBabId] = useState(null);
   // Item poster yang lagi dibuka detailnya (null = masih di tampilan grid)
   const [selectedGalleryIndex, setSelectedGalleryIndex] = useState(null);
+  // Item tab tambahan (custom section) yang lagi dibuka detailnya (null = masih di grid)
+  const [selectedCustomIndex, setSelectedCustomIndex] = useState(null);
   // Kepadatan grid masonry: 'nyaman' (kartu gede, dikit kolom) atau 'padat'
   // (lebih banyak kolom, kartu lebih kecil). Default gede biar keliatan jelas.
   const [gridDensity, setGridDensity] = useState('nyaman');
@@ -31,8 +52,7 @@ export default function Projects({ data, initialArticleId }) {
   const featured = articles[0];
   const restArticles = articles.slice(1);
 
-  const selectedSubBab = subBabs.find((sb) => sb.id === selectedSubBabId) || null;
-  const activeGalleryItems = selectedSubBab?.items || [];
+  const activeGalleryItems = posterItems;
   const selectedGalleryItem =
     selectedGalleryIndex !== null ? activeGalleryItems[selectedGalleryIndex] : null;
 
@@ -94,10 +114,15 @@ export default function Projects({ data, initialArticleId }) {
     }
   };
 
-  // Balik ke tampilan grid tiap kali pindah Sub Bab
+  // Esc balik ke grid pas lagi buka detail item di tab tambahan
   useEffect(() => {
-    setSelectedGalleryIndex(null);
-  }, [selectedSubBabId]);
+    if (selectedCustomIndex === null) return;
+    const handler = (e) => {
+      if (e.key === 'Escape') setSelectedCustomIndex(null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedCustomIndex]);
 
   const nextGalleryItem = () =>
     setSelectedGalleryIndex((prev) => (prev + 1) % activeGalleryItems.length);
@@ -139,18 +164,16 @@ export default function Projects({ data, initialArticleId }) {
       </p>
 
       {/* Navigasi Menu Utama */}
-      <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700 pb-3">
-        {[
-          { key: 'articles', label: 'Articles' },
-          { key: 'poster', label: 'Poster' },
-        ].map((tab) => (
+      <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700 pb-3 flex-wrap">
+        {navTabs.map((tab) => (
           <button
             key={tab.key}
             data-hint-id={`projects-nav-${tab.key}`}
             onClick={() => {
               setActiveCategory(tab.key);
               setSelectedArticle(null);
-              setSelectedSubBabId(null);
+              setSelectedGalleryIndex(null);
+              setSelectedCustomIndex(null);
             }}
             className={`px-4 py-2 text-[0.75em] font-semibold rounded-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] ${
               activeCategory === tab.key
@@ -350,51 +373,11 @@ export default function Projects({ data, initialArticleId }) {
         </div>
       )}
 
-      {/* ======================= MENU: POSTER (dikelompokkan per Sub Bab) ======================= */}
+      {/* ======================= MENU: POSTER (daftar file langsung, tanpa Sub Bab) ======================= */}
       {activeCategory === 'poster' && (
         <div className="space-y-6">
-
-          {/* ---------- LAYAR 1: MENU PILIH SUB BAB ---------- */}
-          {!selectedSubBab && (
-            <div>
-              {subBabs.length === 0 ? (
-                <p className="text-[0.875em] text-gray-400 italic py-10 text-center">
-                  Belum ada sub bab poster yang ditambahkan.
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {subBabs.map((sb) => (
-                    <button
-                      key={sb.id}
-                      type="button"
-                      data-hint-id={`projects-poster-subbab-${sb.id}`}
-                      onClick={() => setSelectedSubBabId(sb.id)}
-                      className="group flex flex-col items-center justify-center gap-2 h-32 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1e1e1e] hover:border-[#2B579A] dark:hover:border-[#6FA8DC] hover:shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
-                    >
-                      <span className="text-[0.9375em] font-bold text-gray-800 dark:text-gray-100 group-hover:text-[#2B579A] dark:group-hover:text-[#6FA8DC] transition-colors text-center px-2">
-                        {sb.name || 'Tanpa Nama'}
-                      </span>
-                      <span className="text-[0.6875em] font-mono text-gray-400 dark:text-gray-500">
-                        {(sb.items || []).length} poster
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ---------- LAYAR 2: GRID POSTER DI DALAM SUB BAB ---------- */}
-          {selectedSubBab && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <button
-                  onClick={() => setSelectedSubBabId(null)}
-                  className="flex items-center gap-1.5 text-[0.75em] font-mono text-gray-500 dark:text-gray-400 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] rounded"
-                >
-                  <span>←</span> Kembali ke Sub Bab
-                </button>
-
+          <div>
+            <div className="flex items-center justify-end flex-wrap gap-3 mb-4">
                 {activeGalleryItems.length > 0 && !selectedGalleryItem && (
                   <div className="flex items-center gap-1 text-[0.6875em] font-mono text-gray-400">
                     <span className="hidden sm:inline mr-1">Ukuran:</span>
@@ -416,15 +399,11 @@ export default function Projects({ data, initialArticleId }) {
                     ))}
                   </div>
                 )}
-              </div>
-
-              <h2 className="text-[1.25em] font-bold tracking-tight text-gray-900 dark:text-white -mt-2">
-                {selectedSubBab.name || 'Tanpa Nama'}
-              </h2>
+            </div>
 
               {activeGalleryItems.length === 0 ? (
                 <p className="text-[0.875em] text-gray-400 italic py-10 text-center">
-                  Belum ada poster di sub bab ini.
+                  Belum ada poster yang ditambahkan.
                 </p>
               ) : !selectedGalleryItem ? (
                 /* Masonry ala Pinterest — tinggi kartu ngikutin rasio gambar asli,
@@ -539,6 +518,111 @@ export default function Projects({ data, initialArticleId }) {
                   </div>
                 </div>
               )}
+          </div>
+        </div>
+      )}
+
+      {/* ======================= MENU: TAB TAMBAHAN (Custom Section) ======================= */}
+      {activeCustomSection && (
+        <div className="space-y-6">
+          {activeCustomItems.length === 0 ? (
+            <p className="text-[0.875em] text-gray-400 italic py-10 text-center">
+              Belum ada item di tab ini.
+            </p>
+          ) : selectedCustomIndex === null ? (
+            /* Grid kartu — gambar (kalau ada), judul, kategori */
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+              {activeCustomItems.map((item, idx) => (
+                <div
+                  key={item.id || idx}
+                  onClick={() => setSelectedCustomIndex(idx)}
+                  {...(item.hintEnabled !== false ? { 'data-hint-id': `projects-custom-${item.id || idx}` } : {})}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedCustomIndex(idx);
+                    }
+                  }}
+                  className="cursor-pointer group rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
+                >
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-md border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <svg className="w-8 h-8 text-gray-300 dark:text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="pt-2">
+                    {item.category && (
+                      <span className="text-[0.625em] font-mono uppercase text-gray-400 tracking-wide block mb-0.5">
+                        {item.category}
+                      </span>
+                    )}
+                    <h3 className="text-[0.8125em] font-bold leading-snug text-gray-900 dark:text-white group-hover:text-[#2B579A] dark:group-hover:text-[#6FA8DC] transition-colors line-clamp-2">
+                      {item.title}
+                    </h3>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Detail item — dibuka pas salah satu kartu di grid diklik */
+            <div className="space-y-6 view-reveal">
+              <button
+                onClick={() => setSelectedCustomIndex(null)}
+                className="text-[0.75em] font-semibold text-gray-600 dark:text-gray-300 hover:text-[#2B579A] dark:hover:text-[#6FA8DC] bg-gray-100 dark:bg-[#2d2d2d] px-3 py-1.5 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
+              >
+                &larr; Kembali
+              </button>
+
+              <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1fr] gap-6 md:gap-10 items-start">
+                {activeCustomItems[selectedCustomIndex].imageUrl && (
+                  <div className="w-full rounded-md overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40 flex items-center justify-center">
+                    <img
+                      src={activeCustomItems[selectedCustomIndex].imageUrl}
+                      alt={activeCustomItems[selectedCustomIndex].title}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-auto max-h-[70vh] object-contain"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {activeCustomItems[selectedCustomIndex].category && (
+                    <span className="text-[0.625em] font-mono uppercase text-gray-400 tracking-widest block">
+                      {activeCustomItems[selectedCustomIndex].category}
+                    </span>
+                  )}
+                  <h2 className="text-[1.25em] sm:text-[1.5em] font-bold text-gray-900 dark:text-white">
+                    {activeCustomItems[selectedCustomIndex].title}
+                  </h2>
+                  <p className="text-[0.875em] text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">
+                    {activeCustomItems[selectedCustomIndex].description}
+                  </p>
+
+                  {activeCustomItems[selectedCustomIndex].url && (
+                    <a
+                      href={activeCustomItems[selectedCustomIndex].url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 mt-2 text-[0.75em] font-bold uppercase tracking-wide text-white bg-[#2B579A] dark:bg-[#6FA8DC] dark:text-[#1a1a1a] px-4 py-2 rounded-sm hover:bg-[#1e3f73] dark:hover:bg-[#5a95c9] transition-colors"
+                    >
+                      Lihat &rarr;
+                    </a>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -1,5 +1,103 @@
 import React, { useState } from 'react';
 
+// Field link tombol (actionButtons/collabButtonUrl) di CMS sering diisi orang cuma alamat
+// emailnya polos (mis. "nama@gmail.com?subject=Halo") TANPA prefix "mailto:" di depan —
+// itu bikin browser nganggep string itu path relatif biasa (bukan alamat email), jadi
+// tombolnya keliatan gak ngarah ke mana-mana. Fungsi ini otomatis nambahin "mailto:" kalau
+// polanya emang kayak alamat email dan belum ada skema (http/https/mailto/tel) sama sekali
+// — jadi CMS-nya tetep bisa diisi tanpa mikirin prefix, tapi link publiknya tetep valid.
+function resolveActionUrl(raw) {
+  const url = (raw || '').trim();
+  if (!url) return url;
+  if (/^(mailto:|tel:|https?:)/i.test(url)) return url;
+  // Pola kasar alamat email: ada "@", dan bagian setelah "@" ada titik (domain) sebelum
+  // ketemu spasi/"?" (query string kayak ?subject=... boleh nyusul).
+  if (/^[^\s@?]+@[^\s@?]+\.[^\s@?]+/.test(url)) return `mailto:${url}`;
+  return url;
+}
+
+// Nempelin template Body Email (diisi admin lewat textarea terpisah di CMS, teks polos
+// biasa) ke query string "mailto:" — jadi admin gak perlu mikirin encoding/format
+// "?body=..." manual. Kalau admin udah nulis "&body=..." sendiri langsung di field
+// Link/URL, itu dianggap lebih spesifik dan gak ditimpa sama template ini.
+function appendMailtoBody(url, bodyTemplate) {
+  if (!bodyTemplate || !/^mailto:/i.test(url)) return url;
+  if (/[?&]body=/i.test(url)) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}body=${encodeURIComponent(bodyTemplate)}`;
+}
+
+// Fallback kalau device gak punya default mail client (mis. buka di komputer yang
+// Outlook/Mail-nya belum pernah di-setup) — link "mailto:" bakal keliatan gak
+// ngapa-ngapain pas diklik, gak ada popup error, gak ada indikasi apa pun. Ini nyalin
+// alamat/subject/body dari mailto ke format URL Gmail Compose, biar tetep bisa dibuka
+// langsung di browser tanpa perlu app terinstall.
+function mailtoToGmailCompose(mailtoUrl) {
+  try {
+    const withoutScheme = mailtoUrl.replace(/^mailto:/i, '');
+    const [toRaw, queryString = ''] = withoutScheme.split('?');
+    const params = new URLSearchParams(queryString);
+    const subject = params.get('subject') || '';
+    const body = params.get('body') || '';
+    const to = toRaw ? decodeURIComponent(toRaw) : '';
+    const gmail = new URL('https://mail.google.com/mail/');
+    gmail.searchParams.set('view', 'cm');
+    gmail.searchParams.set('fs', '1');
+    if (to) gmail.searchParams.set('to', to);
+    if (subject) gmail.searchParams.set('su', subject);
+    if (body) gmail.searchParams.set('body', body);
+    return gmail.toString();
+  } catch {
+    return null;
+  }
+}
+
+// Dipasang di onClick tombol "mailto:" — biarin link mailto-nya tetep jalan normal
+// (gak di-preventDefault), tapi sambil ngecek: kalau OS beneran ngeluncurin app mail,
+// browser/tab ini bakal kehilangan fokus (event "blur"). Kalau dalam waktu singkat
+// gak ada blur sama sekali, dianggap gak ada default mail client yang ke-set →
+// otomatis buka Gmail Compose di tab baru sebagai gantinya. Heuristik ini emang gak
+// 100% akurat di semua browser/OS, tapi cukup buat nutupin kasus paling umum
+// (device tanpa mail app default).
+function handleMailtoClick(gmailFallbackUrl) {
+  return () => {
+    if (!gmailFallbackUrl) return;
+
+    // PENTING: tab kosong ini WAJIB dibuka di sini, langsung sinkron pas handler
+    // ini jalan (bukan di dalam setTimeout) — supaya browser masih nganggep ini
+    // "beneran hasil klik user" dan gak diblokir sama popup blocker. Kalau
+    // window.open dipanggil belakangan (setelah delay), sebagian besar browser
+    // modern udah gak nganggep itu klik langsung lagi dan bisa diem-diem
+    // ngeblokirnya — itu penyebab paling umum kenapa tab fallback-nya "gak
+    // kejadian" sama sekali.
+    const fallbackTab = window.open('', '_blank');
+
+    let handed = false;
+    const markHanded = () => {
+      handed = true;
+    };
+    window.addEventListener('blur', markHanded, { once: true });
+    window.setTimeout(() => {
+      window.removeEventListener('blur', markHanded);
+      if (handed) {
+        // Heuristiknya nganggep default mail app kebuka (window ini kehilangan
+        // fokus) — tab kosong tadi jadi gak kepake, tutup lagi biar gak
+        // ninggalin tab nganggur ke user.
+        if (fallbackTab && !fallbackTab.closed) fallbackTab.close();
+      } else if (fallbackTab) {
+        // Gak ada mail app default kedeteksi -> isi tab kosong tadi dengan
+        // Gmail Compose. Ini beda dari sebelumnya: kita gak "membuka" tab baru
+        // di titik ini, cuma nge-set lokasi tab yang UDAH kebuka dari awal.
+        fallbackTab.location.href = gmailFallbackUrl;
+      } else {
+        // Fallback terakhir kalau ternyata tab kosongnya tadi tetep keblokir
+        // (jarang terjadi karena dibuka sinkron, tapi jaga-jaga).
+        window.open(gmailFallbackUrl, '_blank', 'noopener,noreferrer');
+      }
+    }, 600);
+  };
+}
+
 /* Icon kecil monoline, bikin sendiri biar gak nambah dependency baru ke proyek */
 const Icon = {
   Mail: (p) => (
@@ -84,6 +182,7 @@ const FALLBACK = {
   closingText: '',
   collabButtonText: '',
   collabButtonUrl: '#',
+  collabButtonBody: '',
   socials: [],
   actionButtons: [],
 };
@@ -93,6 +192,12 @@ export default function Contact({ data }) {
   // props-nya belum ada / ada field yang kosong dari Supabase, biar gak crash.
   const contactInfo = { ...FALLBACK, ...data };
   const { location, availability } = splitLocation(contactInfo.location);
+
+  // Link tombol kolaborasi (dipakai berkali-kali di JSX bawah, jadi dihitung sekali di sini)
+  const collabUrl = appendMailtoBody(resolveActionUrl(contactInfo.collabButtonUrl), contactInfo.collabButtonBody);
+  const collabIsMailto = /^mailto:/i.test(collabUrl);
+  const collabIsAppLink = collabIsMailto || /^tel:/i.test(collabUrl);
+  const collabGmailFallbackUrl = collabIsMailto ? mailtoToGmailCompose(collabUrl) : null;
 
   const [copied, setCopied] = useState(false);
 
@@ -160,21 +265,32 @@ export default function Contact({ data }) {
 
         {/* Tombol Aksi */}
         <div className="flex flex-col sm:flex-row gap-3 mt-6">
-          {contactInfo.actionButtons.map((btn, index) => (
-            <a
-              key={index}
-              href={btn.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`flex-1 px-5 py-2.5 text-[0.875em] font-semibold rounded-md text-center transition-colors ${
-                btn.primary
-                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200'
-                  : 'border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              {stripTrailingEmoji(btn.label)}
-            </a>
-          ))}
+          {contactInfo.actionButtons.map((btn, index) => {
+            // mailto:/tel: HARUS dibuka di tab yang sama (bukan target="_blank").
+            // Kalau dipaksa _blank, browser buka tab kosong baru buat "meluncurkan"
+            // app mail/telepon, dan banyak browser (terutama di HP + popup blocker)
+            // nge-block itu diam-diam — hasilnya tombol keliatan gak ngapa-ngapain
+            // sama sekali. Untuk http(s) biasa (link eksternal/PDF), _blank tetep oke.
+            const resolvedUrl = appendMailtoBody(resolveActionUrl(btn.url), btn.body);
+            const isMailto = /^mailto:/i.test(resolvedUrl);
+            const isAppLink = isMailto || /^tel:/i.test(resolvedUrl);
+            const gmailFallbackUrl = isMailto ? mailtoToGmailCompose(resolvedUrl) : null;
+            return (
+              <a
+                key={index}
+                href={resolvedUrl}
+                onClick={isMailto ? handleMailtoClick(gmailFallbackUrl) : undefined}
+                {...(isAppLink ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+                className={`flex-1 px-5 py-2.5 text-[0.875em] font-semibold rounded-md text-center transition-colors ${
+                  btn.primary
+                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200'
+                    : 'border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                {stripTrailingEmoji(btn.label)}
+              </a>
+            );
+          })}
         </div>
 
         {/* Sosial Media — icon-only, tenang */}
@@ -200,9 +316,9 @@ export default function Contact({ data }) {
 
           {contactInfo.collabButtonText && (
             <a
-              href={contactInfo.collabButtonUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={collabUrl}
+              onClick={collabIsMailto ? handleMailtoClick(collabGmailFallbackUrl) : undefined}
+              {...(collabIsAppLink ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
               className="inline-flex items-center gap-1 text-[0.875em] font-medium text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               {contactInfo.collabButtonText}
