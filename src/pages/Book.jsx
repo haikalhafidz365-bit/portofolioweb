@@ -224,7 +224,7 @@ export default function Book({ data }) {
             {/* SISI KIRI — foto isi buku (overview) */}
             <div className="relative h-56 sm:h-auto sm:min-h-[420px] bg-gray-100 dark:bg-black/30 overflow-hidden">
               {activeBook.overviewImage ? (
-                <img src={activeBook.overviewImage} alt={`Isi buku ${activeBook.title}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                <img src={activeBook.overviewImage} alt={`Isi buku ${activeBook.title}`} loading="lazy" decoding="async" className="w-full h-full object-contain sm:object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-center px-6 font-mono text-[0.75em] text-gray-400 dark:text-gray-600">
                   belum ada foto overview buat buku ini

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { initialPortfolioData } from './cms/CmsData';
 import { supabase } from './lib/supabaseClient';
 import { initAnalytics, trackPageView } from './lib/analytics';
+import { setPageMeta } from './lib/pageMeta';
 
 // Import Komponen Halaman Publik
 import Home from './pages/Home';
@@ -315,6 +316,44 @@ export default function App() {
       trackPageView(activeTab);
     }
   }, [activeTab, isAdminMode]);
+
+  // Update <title> browser + meta description/Open Graph/Twitter Card tiap kali pindah
+  // tab, biar tiap halaman punya identitas sendiri (bukan cuma judul situs polos terus-
+  // terusan) — dan biar ada baseline OG tag yang kepasang duluan sebelum Projects.jsx
+  // nge-override lagi jadi lebih spesifik pas satu artikel dibuka (lihat pageMeta.js buat
+  // catatan penting soal batasan client-side meta tag ini buat preview share). Skip pas
+  // Admin Mode karena lagi di CMS, bukan halaman publik yang mau di-share orang.
+  useEffect(() => {
+    if (isAdminMode) return;
+    const tabMeta = {
+      Home: {
+        title: portfolioData.home?.name,
+        description: portfolioData.home?.bio,
+        image: portfolioData.home?.photoUrl,
+      },
+      About: {
+        title: 'About',
+        description: portfolioData.about?.live,
+      },
+      Career: {
+        title: portfolioData.career?.heading || 'Career',
+        description: portfolioData.career?.subheading,
+      },
+      Book: {
+        title: portfolioData.books?.heading || 'Book',
+        description: portfolioData.books?.subheading,
+      },
+      Projects: {
+        title: portfolioData.projects?.heading || 'Projects',
+        description: portfolioData.projects?.subheading,
+      },
+      Contact: {
+        title: 'Contact',
+        description: portfolioData.contact?.subheading,
+      },
+    };
+    setPageMeta(tabMeta[activeTab] || {});
+  }, [activeTab, portfolioData, isAdminMode]);
 
 
   // Deteksi layar sempit (HP) SECARA OTOMATIS lewat matchMedia — bukan toggle manual.

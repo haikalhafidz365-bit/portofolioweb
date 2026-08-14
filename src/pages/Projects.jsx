@@ -1,4 +1,158 @@
 import React, { useState, useEffect } from 'react';
+import { setPageMeta } from '../lib/pageMeta';
+
+// TEMPLATE BAKU buat semua bentuk tulisan panjang di halaman Projects (artikel biasa,
+// tulisan panjang dari Word di Tab Tambahan, dan APAPUN jenis konten tulisan yang
+// nanti ditambah lagi ke halaman ini). SATU sumber kebenaran, dipakai bareng-bareng —
+// jangan bikin className justify/rata manual sendiri-sendiri per section, tinggal
+// pasang constant ini biar otomatis seragam & gak perlu inget-inget lagi kalau nambah
+// bentuk baru. Isinya: ukuran font & warna teks badan tulisan, line-height nyaman baca,
+// rata kiri-kanan (justify) buat paragraf (termasuk paragraf hasil dangerouslySetInnerHTML
+// dari editor CMS / convert Word), plus styling dasar buat heading/list/link di dalamnya.
+const ARTICLE_TEXT_CLASS =
+  'text-[0.875em] sm:text-[1em] text-gray-700 dark:text-gray-300 leading-relaxed text-justify [&_p]:text-justify [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_h1]:text-[1.25em] [&_h1]:font-bold [&_h1]:text-gray-900 dark:[&_h1]:text-white [&_h2]:text-[1.1em] [&_h2]:font-bold [&_h2]:text-gray-900 dark:[&_h2]:text-white [&_a]:text-[#2B579A] dark:[&_a]:text-[#6FA8DC] [&_a]:underline [&_a]:font-medium';
+
+// TEMPLATE BAKU buat lebar & posisi kontainer tulisan panjang — biar semua konten
+// tulisan di halaman Projects ke-center kayak halaman A4 (gak nempel ke kiri), bukan cuma
+// artikel biasa doang. Dipakai bareng ARTICLE_TEXT_CLASS di atas.
+const ARTICLE_CONTAINER_CLASS = 'max-w-2xl mx-auto';
+
+// TEMPLATE BAKU buat tampilan MENU/listing gaya portal berita (kartu unggulan besar +
+// daftar kecil di sampingnya) — dipakai bareng oleh tab Articles bawaan DAN tab tambahan
+// mana pun yang di-set admin ke layout "Tulisan (seperti Articles)" lewat CMS. SATU
+// komponen render, dipakai di kedua tempat — biar "seragam tanpa terkecuali" itu
+// struktural (ganti tampilannya di sini, otomatis kebawa ke semua tab yang makai), bukan
+// hasil disalin-tempel manual yang gampang nyimpang seiring waktu.
+// `getImage`/`getSnippet`/`getMeta` nyesuaiin field yang beda antara data artikel biasa
+// (`image`/`snippet`/`date`+`author`) sama item tab tambahan (`imageUrl`/`description`,
+// belum ada field tanggal/penulis) — kalau getter-nya balikin falsy, bagian itu simply
+// gak dirender (sama kayak perilaku field opsional di tempat lain di file ini).
+function ArticleStyleListing({
+  items,
+  onOpen,
+  hintPrefix,
+  getImage = (item) => item.image,
+  getSnippet = (item) => item.snippet,
+  getMeta = (item) => item.date,
+}) {
+  if (!items || items.length === 0) return null;
+  const featured = items[0];
+  const rest = items.slice(1);
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8 lg:gap-10">
+      {/* Item unggulan — tampil besar di kiri */}
+      <div
+        onClick={() => onOpen(featured)}
+        {...(featured.hintEnabled !== false ? { 'data-hint-id': `${hintPrefix}-${featured.id}` } : {})}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onOpen(featured);
+          }
+        }}
+        className="cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616] rounded-sm"
+      >
+        {featured.category && (
+          <span className="inline-block bg-green-600 text-white text-[0.625em] sm:text-[0.75em] font-bold uppercase tracking-wide px-3 py-1.5 mb-3">
+            {featured.category}
+          </span>
+        )}
+        {getImage(featured) && (
+          <div className="w-full aspect-[16/10] overflow-hidden rounded-sm mb-4 bg-gray-100 dark:bg-black/40">
+            <img
+              src={getImage(featured)}
+              alt={featured.title}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            />
+          </div>
+        )}
+        <h2 className="text-[1.25em] sm:text-[1.5em] lg:text-[1.875em] font-extrabold leading-snug text-gray-900 dark:text-white group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors">
+          {featured.title}
+        </h2>
+        {(featured.author || getMeta(featured)) && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.75em] text-gray-400 mt-3 font-mono">
+            {featured.author && (
+              <>
+                <span>
+                  OLEH{' '}
+                  <span className="text-green-700 dark:text-green-400 font-semibold">
+                    {featured.author.toUpperCase()}
+                  </span>
+                </span>
+                {getMeta(featured) && <span>&middot;</span>}
+              </>
+            )}
+            {getMeta(featured) && <span>{getMeta(featured)}</span>}
+          </div>
+        )}
+        {getSnippet(featured) && (
+          <p className="text-[0.875em] sm:text-[1em] text-gray-600 dark:text-gray-400 leading-relaxed mt-4">
+            {getSnippet(featured)}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen(featured);
+          }}
+          className="mt-5 inline-flex items-center gap-2 text-[0.6875em] sm:text-[0.75em] font-bold uppercase tracking-wide border border-gray-300 dark:border-gray-600 px-4 py-2 rounded-sm hover:border-green-600 hover:text-green-700 dark:hover:text-green-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
+        >
+          Baca Selengkapnya
+        </button>
+      </div>
+
+      {/* Daftar item lainnya — kecil di kanan */}
+      {rest.length > 0 && (
+        <div className="space-y-5 lg:border-l lg:pl-8 border-gray-100 dark:border-gray-800">
+          {rest.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => onOpen(item)}
+              {...(item.hintEnabled !== false ? { 'data-hint-id': `${hintPrefix}-${item.id}` } : {})}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onOpen(item);
+                }
+              }}
+              className="flex gap-3 cursor-pointer group items-start rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
+            >
+              {getImage(item) && (
+                <div className="w-20 h-16 sm:w-24 sm:h-20 shrink-0 overflow-hidden rounded-sm bg-gray-100 dark:bg-black/40">
+                  <img
+                    src={getImage(item)}
+                    alt={item.title}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <div className="min-w-0">
+                <h3 className="text-[0.875em] font-bold leading-snug text-gray-900 dark:text-white group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors line-clamp-3">
+                  {item.title}
+                </h3>
+                {getMeta(item) && (
+                  <span className="text-[0.625em] font-mono text-gray-400 mt-1.5 inline-block">
+                    {getMeta(item)}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Projects({ data, initialArticleId }) {
   const projectsData = data || {};
@@ -47,10 +201,10 @@ export default function Projects({ data, initialArticleId }) {
   // (lebih banyak kolom, kartu lebih kecil). Default gede biar keliatan jelas.
   const [gridDensity, setGridDensity] = useState('nyaman');
 
-  // Artikel pertama di data = artikel unggulan (gaya headline Mojok),
-  // sisanya jadi daftar kecil di sampingnya
-  const featured = articles[0];
-  const restArticles = articles.slice(1);
+  // Artikel pertama di data = artikel unggulan (gaya headline Mojok), sisanya jadi
+  // daftar kecil di sampingnya — logic ini sekarang ada di dalem ArticleStyleListing
+  // (dipakai bareng buat tab Articles & tab tambahan ber-layout "articles"), jadi gak
+  // perlu dihitung ulang manual di sini.
 
   const activeGalleryItems = posterItems;
   const selectedGalleryItem =
@@ -139,6 +293,26 @@ export default function Projects({ data, initialArticleId }) {
     return () => window.removeEventListener('keydown', handler);
   }, [selectedArticle]);
 
+  // Pas satu artikel dibuka, timpa <title> & meta/OG/Twitter tags jadi spesifik punya
+  // artikel itu (judul, snippet jadi description, gambar artikel, URL share-nya) — biar
+  // preview link Share (WhatsApp/X/FB/LinkedIn) nunjukkin artikel yang bener, bukan
+  // generic "Projects" doang. Pas artikel ditutup/komponen unmount, balikin lagi ke meta
+  // default tab Projects (heading/subheading), bukan dibiarin nyangkut ke meta artikel
+  // terakhir yang dibuka.
+  useEffect(() => {
+    if (!selectedArticle) return;
+    setPageMeta({
+      title: selectedArticle.title,
+      description: selectedArticle.snippet,
+      image: selectedArticle.image,
+      url: buildShareUrl(selectedArticle),
+    });
+    return () => {
+      setPageMeta({ title: heading, description: subheading });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedArticle]);
+
   // Navigasi keyboard pas lagi di mode detail gallery: Esc balik ke grid,
   // panah kiri/kanan gonta-ganti item
   useEffect(() => {
@@ -195,106 +369,11 @@ export default function Projects({ data, initialArticleId }) {
                 Belum ada artikel yang ditambahkan.
               </p>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8 lg:gap-10">
-
-                {/* Artikel unggulan — tampil besar di kiri */}
-                {featured && (
-                  <div
-                    onClick={() => openArticle(featured)}
-                    {...(featured.hintEnabled !== false ? { 'data-hint-id': `projects-article-${featured.id}` } : {})}
-                    className="cursor-pointer group"
-                  >
-                    {featured.category && (
-                      <span className="inline-block bg-green-600 text-white text-[0.625em] sm:text-[0.75em] font-bold uppercase tracking-wide px-3 py-1.5 mb-3">
-                        {featured.category}
-                      </span>
-                    )}
-                    {featured.image && (
-                      <div className="w-full aspect-[16/10] overflow-hidden rounded-sm mb-4 bg-gray-100 dark:bg-black/40">
-                        <img
-                          src={featured.image}
-                          alt={featured.title}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-                        />
-                      </div>
-                    )}
-                    <h2 className="text-[1.25em] sm:text-[1.5em] lg:text-[1.875em] font-extrabold leading-snug text-gray-900 dark:text-white group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors">
-                      {featured.title}
-                    </h2>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.75em] text-gray-400 mt-3 font-mono">
-                      {featured.author && (
-                        <>
-                          <span>
-                            OLEH{' '}
-                            <span className="text-green-700 dark:text-green-400 font-semibold">
-                              {featured.author.toUpperCase()}
-                            </span>
-                          </span>
-                          <span>·</span>
-                        </>
-                      )}
-                      <span>{featured.date}</span>
-                    </div>
-                    <p className="text-[0.875em] sm:text-[1em] text-gray-600 dark:text-gray-400 leading-relaxed mt-4">
-                      {featured.snippet}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openArticle(featured);
-                      }}
-                      className="mt-5 inline-flex items-center gap-2 text-[0.6875em] sm:text-[0.75em] font-bold uppercase tracking-wide border border-gray-300 dark:border-gray-600 px-4 py-2 rounded-sm hover:border-green-600 hover:text-green-700 dark:hover:text-green-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
-                    >
-                      Baca Selengkapnya
-                    </button>
-                  </div>
-                )}
-
-                {/* Daftar artikel lainnya — kecil di kanan */}
-                {restArticles.length > 0 && (
-                  <div className="space-y-5 lg:border-l lg:pl-8 border-gray-100 dark:border-gray-800">
-                    {restArticles.map((art) => (
-                      <div
-                        key={art.id}
-                        onClick={() => openArticle(art)}
-                        {...(art.hintEnabled !== false ? { 'data-hint-id': `projects-article-${art.id}` } : {})}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            openArticle(art);
-                          }
-                        }}
-                        className="flex gap-3 cursor-pointer group items-start rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
-                      >
-                        {art.image && (
-                          <div className="w-20 h-16 sm:w-24 sm:h-20 shrink-0 overflow-hidden rounded-sm bg-gray-100 dark:bg-black/40">
-                            <img
-                              src={art.image}
-                              alt={art.title}
-                              loading="lazy"
-                              decoding="async"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <h3 className="text-[0.875em] font-bold leading-snug text-gray-900 dark:text-white group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors line-clamp-3">
-                            {art.title}
-                          </h3>
-                          <span className="text-[0.625em] font-mono text-gray-400 mt-1.5 inline-block">
-                            {art.date}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ArticleStyleListing
+                items={articles}
+                onOpen={openArticle}
+                hintPrefix="projects-article"
+              />
             )
           ) : (
             /* Tampilan Baca Artikel Penuh (Detail View) */
@@ -316,7 +395,7 @@ export default function Projects({ data, initialArticleId }) {
                 </button>
               </div>
 
-              <div className="max-w-2xl space-y-4">
+              <div className={`${ARTICLE_CONTAINER_CLASS} space-y-4`}>
                 {selectedArticle.category && (
                   <span className="inline-block bg-green-600 text-white text-[0.625em] font-bold uppercase tracking-wide px-3 py-1.5">
                     {selectedArticle.category}
@@ -354,16 +433,18 @@ export default function Projects({ data, initialArticleId }) {
                   </div>
                 )}
 
-                <div className="text-[0.875em] sm:text-[1em] text-gray-700 dark:text-gray-300 leading-relaxed space-y-4 pt-1">
+                <div className={`${ARTICLE_TEXT_CLASS} space-y-4 pt-1`}>
                   <p className="font-medium text-[1em] text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-[#252526] p-4 rounded border-l-4 border-green-600">
                     {selectedArticle.snippet}
                   </p>
                   {/* Isi artikel disimpan sebagai HTML (dari editor Bold/Italic/Underline/List/Link
                       di CMS), jadi dirender pakai dangerouslySetInnerHTML biar formatnya kebawa —
                       bukan cuma teks polos kayak sebelumnya. Cuma admin (password-protected) yang
-                      bisa nulis ke field ini lewat CMS, jadi aman dari XSS pihak luar. */}
+                      bisa nulis ke field ini lewat CMS, jadi aman dari XSS pihak luar. Gak perlu
+                      className justify/list/link manual lagi di sini — udah ikut ARTICLE_TEXT_CLASS
+                      di parent-nya (text-align inherit ke bawah). */}
                   <div
-                    className="space-y-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_a]:text-[#2B579A] dark:[&_a]:text-[#6FA8DC] [&_a]:underline [&_a]:font-medium"
+                    className="space-y-4"
                     dangerouslySetInnerHTML={{ __html: selectedArticle.content }}
                   />
                 </div>
@@ -530,6 +611,21 @@ export default function Projects({ data, initialArticleId }) {
               Belum ada item di tab ini.
             </p>
           ) : selectedCustomIndex === null ? (
+            activeCustomSection.layout === 'articles' ? (
+              /* Layout "Tulisan (seperti Articles)" — dipilih admin lewat CMS buat tab
+                 tambahan yang konteksnya tulisan (esai, cerpen, dll), biar tampilannya
+                 SERAGAM sama tab Articles bawaan — satu komponen bareng, bukan niru-niru
+                 manual. imageUrl/description item custom disamain ke image/snippet
+                 lewat getImage/getSnippet biar kompatibel sama ArticleStyleListing. */
+              <ArticleStyleListing
+                items={activeCustomItems}
+                onOpen={(item) => setSelectedCustomIndex(activeCustomItems.indexOf(item))}
+                hintPrefix="projects-custom"
+                getImage={(item) => item.imageUrl}
+                getSnippet={(item) => item.description}
+                getMeta={() => null}
+              />
+            ) : (
             /* Grid kartu — gambar (kalau ada), judul, kategori */
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
               {activeCustomItems.map((item, idx) => (
@@ -583,6 +679,7 @@ export default function Projects({ data, initialArticleId }) {
                 </div>
               ))}
             </div>
+            )
           ) : (
             /* Detail item — dibuka pas salah satu kartu di grid diklik */
             <div className="space-y-6 view-reveal">
@@ -647,7 +744,7 @@ export default function Projects({ data, initialArticleId }) {
                   dangerouslySetInnerHTML buat isi artikel di atas. */}
               {activeCustomItems[selectedCustomIndex].wordContent && (
                 <div
-                  className="max-w-3xl text-[0.875em] sm:text-[1em] text-gray-700 dark:text-gray-300 leading-relaxed space-y-4 pt-2 border-t border-gray-100 dark:border-gray-800 [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_h1]:text-[1.25em] [&_h1]:font-bold [&_h1]:text-gray-900 dark:[&_h1]:text-white [&_h2]:text-[1.1em] [&_h2]:font-bold [&_h2]:text-gray-900 dark:[&_h2]:text-white [&_a]:text-[#2B579A] dark:[&_a]:text-[#6FA8DC] [&_a]:underline [&_a]:font-medium"
+                  className={`${ARTICLE_CONTAINER_CLASS} ${ARTICLE_TEXT_CLASS} space-y-4 pt-2 border-t border-gray-100 dark:border-gray-800 [&_p]:mb-3`}
                   dangerouslySetInnerHTML={{ __html: activeCustomItems[selectedCustomIndex].wordContent }}
                 />
               )}

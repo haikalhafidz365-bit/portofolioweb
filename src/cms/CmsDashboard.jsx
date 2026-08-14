@@ -191,6 +191,10 @@ const emptyCustomItem = () => ({
 const emptyCustomSection = (label = '') => ({
   id: `section-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
   label,
+  // 'gallery' = grid foto (perilaku lama/default, buat poster/dokumentasi visual).
+  // 'articles' = tampilan gaya portal berita kayak tab Articles (kartu unggulan besar +
+  // daftar kecil), buat tab tambahan yang konteksnya tulisan (esai, cerpen, dll).
+  layout: 'gallery',
   items: [],
 });
 
@@ -238,6 +242,7 @@ function normalizeProjectsData(raw) {
       ? projects.customSections.map((s) => ({
           id: s.id || emptyCustomSection().id,
           label: s.label || '',
+          layout: s.layout === 'articles' ? 'articles' : 'gallery',
           items: Array.isArray(s.items) ? s.items : [],
         }))
       : [],
@@ -664,6 +669,12 @@ export default function CmsDashboard({ data, onSave, onClose }) {
       customSections[sectionIdx] = { ...customSections[sectionIdx], label };
       return { ...p, projects: { ...p.projects, customSections } };
     });
+  const setCustomSectionLayout = (sectionIdx, layout) =>
+    setFormData((p) => {
+      const customSections = [...p.projects.customSections];
+      customSections[sectionIdx] = { ...customSections[sectionIdx], layout };
+      return { ...p, projects: { ...p.projects, customSections } };
+    });
   const setCustomItemField = (sectionIdx, itemIdx, field, value) =>
     setFormData((p) => {
       const customSections = [...p.projects.customSections];
@@ -936,6 +947,31 @@ export default function CmsDashboard({ data, onSave, onClose }) {
             className={`${inputClsSm} font-semibold flex-1`}
           />
           <RemoveBtn onClick={() => removeCustomSection(sectionIdx)} label="Hapus Tab Ini" />
+        </div>
+
+        {/* Pilihan tampilan MENU tab ini pas dibuka visitor — 'gallery' (grid foto, cocok
+            buat poster/dokumentasi visual) atau 'articles' (kartu unggulan besar + daftar
+            kecil gaya portal berita, SAMA PERSIS kayak tab Articles bawaan — cocok buat
+            tab yang isinya tulisan/esai/cerpen). */}
+        <div className="flex items-center gap-1.5 text-[10px]">
+          <span className="font-semibold text-gray-500 dark:text-gray-400 mr-1">Tampilan Menu:</span>
+          {[
+            { key: 'gallery', label: 'Galeri (grid foto)' },
+            { key: 'articles', label: 'Tulisan (seperti Articles)' },
+          ].map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setCustomSectionLayout(sectionIdx, opt.key)}
+              className={`px-2.5 py-1 rounded-full border transition-colors ${
+                (section.layout || 'gallery') === opt.key
+                  ? 'bg-[#2B579A] dark:bg-[#6FA8DC] text-white dark:text-[#1a1a1a] border-[#2B579A] dark:border-[#6FA8DC] font-semibold'
+                  : 'bg-transparent text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-400'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
 
         <div className="space-y-3 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
