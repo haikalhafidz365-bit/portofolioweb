@@ -46,12 +46,18 @@ export default function Home({ data }) {
       </div>
 
       {/* Nama Lengkap */}
-      <h1 className="text-[2.25em] sm:text-[3em] font-normal tracking-tight mb-3 text-gray-900 dark:text-white">
+      {/* `data-watermark-name-anchor`: dipakai WatermarkBackground.jsx buat ngukur
+          sampe mana batas bawah nama ini (posisinya, BUKAN isinya) — biar kolom kiri
+          watermark berhenti ngisi pas sejajar sini, gak lanjut turun nutupin bio. */}
+      <h1
+        data-watermark-name-anchor="true"
+        className="text-[2.25em] sm:text-[3em] font-normal tracking-tight mb-3 text-gray-900 dark:text-white"
+      >
         {name || '[Nama Lengkap Lo]'}
       </h1>
 
       {/* Bio Singkat / Role */}
-      <p className="text-[0.875em] sm:text-[1em] text-gray-600 dark:text-gray-400 max-w-xl leading-relaxed text-left">
+      <p className="text-[0.875em] sm:text-[1em] text-gray-700 dark:text-gray-300 max-w-xl leading-relaxed text-left">
         {role}{role && bio ? '. ' : ''}{bio}
       </p>
 

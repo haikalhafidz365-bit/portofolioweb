@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import mammoth from 'mammoth';
 import { supabase, IMAGES_BUCKET } from '../lib/supabaseClient';
 
 const TABS = ['home', 'about', 'career', 'book', 'projects', 'contact', 'odds', 'quotes', 'general'];
@@ -169,12 +170,20 @@ const emptyPosterItem = () => ({
 
 // Tab tambahan bebas (di luar Articles & Poster bawaan) — tiap tab punya nama sendiri
 // (label yang tampil di navigasi) + daftar kartu sederhana di dalamnya.
+// `wordContent` = HTML hasil convert dari file .docx yang di-upload (BUKAN file
+// mentahnya yang disimpen — cuma teksnya, udah dikonversi sekali pas upload di CMS,
+// jadi pas ditampilin ke publik gak perlu convert ulang tiap buka halaman). Isinya
+// dipake gantiin `description` di tampilan detail kalau ada (lihat Projects.jsx).
+// `wordFileName` cuma buat ditampilin di CMS ini doang (biar admin tau file mana yang
+// udah ke-upload), gak ikut dipake di halaman publik.
 const emptyCustomItem = () => ({
   id: `custom-item-${Date.now()}`,
   title: '',
   category: '',
   imageUrl: '',
   description: '',
+  wordContent: '',
+  wordFileName: '',
   url: '',
   hintEnabled: true,
 });
@@ -336,6 +345,26 @@ async function uploadImageToStorage(file) {
   return data.publicUrl;
 }
 
+// Convert file .docx (Word) yang di-upload admin jadi HTML, dipakai buat isi cerpen/tulisan
+// panjang di Tab Tambahan Projects. Jalan di browser (client-side), gak lewat server —
+// mammoth baca ArrayBuffer file-nya langsung terus keluarin HTML (paragraf, bold/italic,
+// heading, list dasar ikut kebawa; format kompleks kayak gambar/tabel di dalam docx-nya
+// gak didukung mammoth, bakal di-skip). Hasil HTML ini yang DISIMPEN ke data (bukan file
+// .docx mentahnya) — jadi pas halaman publik dibuka, tinggal render HTML-nya langsung,
+// gak perlu convert ulang tiap kali (lebih cepet & gak butuh mammoth di sisi pengunjung).
+async function convertWordFileToHtml(file) {
+  if (!file) return null;
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.convertToHtml({ arrayBuffer });
+    return result.value; // string HTML
+  } catch (err) {
+    console.error('Gagal convert file Word:', err);
+    alert('Gagal baca file Word ini, mang. Pastiin formatnya .docx (bukan .doc lama) dan coba lagi.');
+    return null;
+  }
+}
+
 export default function CmsDashboard({ data, onSave, onClose }) {
   // Salinan lokal yang bisa diedit bebas — baru dikirim ke portfolioData asli pas Save ditekan.
   const [formData, setFormData] = useState(() => {
@@ -394,6 +423,9 @@ export default function CmsDashboard({ data, onSave, onClose }) {
   // Kunci berupa "{sectionIdx}-{itemIdx}" buat nandain item di tab tambahan (custom section)
   // mana yang lagi proses upload gambarnya
   const [uploadingCustomImage, setUploadingCustomImage] = useState(null);
+  // Sama kayak uploadingCustomImage di atas (key: "sectionIdx-itemIdx"), tapi buat proses
+  // convert file .docx → HTML yang lagi jalan di item mana.
+  const [convertingCustomWord, setConvertingCustomWord] = useState(null);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -964,6 +996,56 @@ export default function CmsDashboard({ data, onSave, onClose }) {
               <input type="text" value={it.imageUrl} onChange={(e) => setCustomItemField(sectionIdx, idx, 'imageUrl', e.target.value)} placeholder="Atau tempel URL Gambar" className={inputClsSm} />
 
               <textarea rows={2} value={it.description} onChange={(e) => setCustomItemField(sectionIdx, idx, 'description', e.target.value)} placeholder="Deskripsi singkat" className={`${inputClsSm} resize-none`} />
+
+              {/* Upload cerpen/tulisan panjang dari file Word (.docx) — isinya diconvert
+                  jadi HTML sekali di sini, terus ditampilin sebagai teks penuh di halaman
+                  publik (gantiin Deskripsi singkat di atas kalau field ini keisi), TANPA
+                  nawarin download file .docx-nya. Kalau mau ganti isinya, tinggal upload
+                  file baru lagi (nimpa yang lama) atau pencet "Hapus Isi Tulisan". */}
+              <div className="space-y-1.5 pt-1 border-t border-dashed border-gray-200 dark:border-gray-700">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block pt-1.5">
+                  Isi Tulisan Panjang (opsional, dari file Word)
+                </label>
+                <input
+                  type="file"
+                  accept=".docx"
+                  disabled={convertingCustomWord === `${sectionIdx}-${idx}`}
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    setConvertingCustomWord(`${sectionIdx}-${idx}`);
+                    const html = await convertWordFileToHtml(file);
+                    setConvertingCustomWord(null);
+                    if (html != null) {
+                      setCustomItemField(sectionIdx, idx, 'wordContent', html);
+                      setCustomItemField(sectionIdx, idx, 'wordFileName', file.name);
+                    }
+                    e.target.value = '';
+                  }}
+                  className="w-full text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/40 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/40 disabled:opacity-60"
+                />
+                {convertingCustomWord === `${sectionIdx}-${idx}` && (
+                  <p className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">Lagi ngonversi file Word...</p>
+                )}
+                {it.wordContent && convertingCustomWord !== `${sectionIdx}-${idx}` && (
+                  <div className="flex items-center justify-between gap-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded px-2 py-1.5">
+                    <span className="text-[10px] text-green-700 dark:text-green-400 truncate">
+                      ✓ {it.wordFileName || 'File Word'} sudah dikonversi & bakal tampil di halaman publik
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomItemField(sectionIdx, idx, 'wordContent', '');
+                        setCustomItemField(sectionIdx, idx, 'wordFileName', '');
+                      }}
+                      className="shrink-0 text-[10px] font-semibold text-red-600 dark:text-red-400 hover:underline"
+                    >
+                      Hapus Isi Tulisan
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <input type="text" value={it.url} onChange={(e) => setCustomItemField(sectionIdx, idx, 'url', e.target.value)} placeholder="Link tombol 'Lihat' (opsional)" className={inputClsSm} />
             </div>
           ))}

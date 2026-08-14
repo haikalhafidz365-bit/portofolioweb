@@ -30,6 +30,30 @@ export default function WatermarkBackground({ odds }) {
   useLayoutEffect(() => {
     if (items.length === 0) return;
 
+    // Jumlahin offsetTop dari `el` naik terus ke atas (lewat rantai offsetParent)
+    // sampe mentok akar dokumen, buat dapetin posisi vertikal "absolut" dalam unit
+    // LAYOUT asli (bukan getBoundingClientRect, yang hasilnya ngikut skala visual
+    // pas kena CSS transform: scale — bakal gak nyambung kalau dibandingin sama
+    // offsetHeight yang selalu di unit layout asli/gak ke-scale).
+    //
+    // Awalnya cara ini nyari elemen nama cuma di dalem `container.offsetParent`
+    // doang (asumsinya container & nama satu wrapper positioned yang sama) — TERNYATA
+    // SALAH: `offsetParent` si container watermark itu cuma div pembungkusnya sendiri
+    // (`absolute inset-0` satu level di atasnya), bukan wrapper besar tempat nama juga
+    // ada. Akibatnya elemen nama gak pernah ketemu, diem-diem fallback ke logic lama
+    // (isi kolom kiri penuh) tanpa keliatan errornya. Sekarang gak butuh "ancestor yang
+    // sama" — tinggal jumlahin ke akar terus dikurangin, jadi valid berapa pun lapis
+    // div positioned di antara container sama elemen nama.
+    const getAbsoluteTop = (el) => {
+      let top = 0;
+      let node = el;
+      while (node) {
+        top += node.offsetTop;
+        node = node.offsetParent;
+      }
+      return top;
+    };
+
     const recalculate = () => {
       const container = containerRef.current;
       const measure = measureRef.current;
@@ -42,18 +66,36 @@ export default function WatermarkBackground({ odds }) {
       measure.style.width = `${colWidth}px`;
 
       const availableHeight = container.clientHeight;
+
+      // Batas tinggi KHUSUS buat kolom kiri: sejajar sama batas bawah nama
+      // (`[data-watermark-name-anchor]` di Home.jsx), BUKAN tinggi kontainer penuh
+      // kayak sebelumnya. Begitu ngelewatin batas ini, sisa kalimat langsung lempar
+      // ke kolom kanan (yang tetep boleh make tinggi kontainer penuh) — jadi kolom
+      // kiri berhenti pas level sama nama, gak lanjut turun nutupin bio di bawahnya.
+      // Nyari elemen nama-nya pake `document.querySelector` global (bukan dibatasin
+      // ke subtree ancestor tertentu) — lihat catatan getAbsoluteTop di atas kenapa.
+      // Kalau anchor-nya gak ketemu sama sekali (mis. dipanggil di luar tab Home),
+      // fallback ke tinggi kontainer penuh kayak logic lama.
+      let leftColumnHeight = availableHeight;
+      const nameAnchor = document.querySelector('[data-watermark-name-anchor]');
+      if (nameAnchor) {
+        const nameBottom = getAbsoluteTop(nameAnchor) + nameAnchor.offsetHeight;
+        const containerTop = getAbsoluteTop(container);
+        leftColumnHeight = Math.max(0, nameBottom - containerTop);
+      }
+
       const paragraphs = Array.from(measure.children);
 
       let cumulative = 0;
       let idx = paragraphs.length; // default: semua muat di kolom kiri
       for (let i = 0; i < paragraphs.length; i++) {
         cumulative += paragraphs[i].offsetHeight;
-        if (cumulative > availableHeight) {
-          idx = i; // kalimat ke-i ini yang bikin mentok → pindah kolom dari sini
+        if (cumulative > leftColumnHeight) {
+          idx = i; // kalimat ke-i ini yang bikin ngelewatin batas nama → pindah kolom dari sini
           break;
         }
       }
-      setSplitIndex(Math.max(1, Math.min(idx, items.length)));
+      setSplitIndex(Math.max(0, Math.min(idx, items.length)));
     };
 
     recalculate();

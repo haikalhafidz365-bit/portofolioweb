@@ -548,6 +548,14 @@ export default function Projects({ data, initialArticleId }) {
                   className="cursor-pointer group rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B579A] dark:focus-visible:ring-[#6FA8DC] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#161616]"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden rounded-md border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/40">
+                    {item.wordContent && (
+                      <span
+                        title="Ada tulisan panjang"
+                        className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-[#2B579A] dark:bg-[#6FA8DC] text-white dark:text-[#1a1a1a] flex items-center justify-center text-[0.625em] shadow"
+                      >
+                        📄
+                      </span>
+                    )}
                     {item.imageUrl ? (
                       <img
                         src={item.imageUrl}
@@ -607,9 +615,16 @@ export default function Projects({ data, initialArticleId }) {
                   <h2 className="text-[1.25em] sm:text-[1.5em] font-bold text-gray-900 dark:text-white">
                     {activeCustomItems[selectedCustomIndex].title}
                   </h2>
-                  <p className="text-[0.875em] text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">
-                    {activeCustomItems[selectedCustomIndex].description}
-                  </p>
+
+                  {/* Deskripsi singkat cuma ditampilin kalau item ini GAK punya tulisan
+                      panjang dari Word (wordContent) — kalau ada, tulisan panjangnya yang
+                      jadi konten utama (dirender full-width di bawah, lihat blok setelah
+                      grid ini), biar gak dobel sama deskripsi singkat. */}
+                  {!activeCustomItems[selectedCustomIndex].wordContent && (
+                    <p className="text-[0.875em] text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">
+                      {activeCustomItems[selectedCustomIndex].description}
+                    </p>
+                  )}
 
                   {activeCustomItems[selectedCustomIndex].url && (
                     <a
@@ -623,6 +638,19 @@ export default function Projects({ data, initialArticleId }) {
                   )}
                 </div>
               </div>
+
+              {/* Tulisan panjang (mis. cerpen) hasil convert dari file Word yang di-upload
+                  admin lewat CMS — disimpen sebagai HTML (`wordContent`), full-width di
+                  bawah grid foto/judul di atas (biar keleluasaan bacanya, gak keimpit
+                  kolom sempit). Cuma admin (password-protected) yang bisa nulis ke field
+                  ini lewat CMS, jadi aman dari XSS pihak luar — sama kayak pola
+                  dangerouslySetInnerHTML buat isi artikel di atas. */}
+              {activeCustomItems[selectedCustomIndex].wordContent && (
+                <div
+                  className="max-w-3xl text-[0.875em] sm:text-[1em] text-gray-700 dark:text-gray-300 leading-relaxed space-y-4 pt-2 border-t border-gray-100 dark:border-gray-800 [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_h1]:text-[1.25em] [&_h1]:font-bold [&_h1]:text-gray-900 dark:[&_h1]:text-white [&_h2]:text-[1.1em] [&_h2]:font-bold [&_h2]:text-gray-900 dark:[&_h2]:text-white [&_a]:text-[#2B579A] dark:[&_a]:text-[#6FA8DC] [&_a]:underline [&_a]:font-medium"
+                  dangerouslySetInnerHTML={{ __html: activeCustomItems[selectedCustomIndex].wordContent }}
+                />
+              )}
             </div>
           )}
         </div>
